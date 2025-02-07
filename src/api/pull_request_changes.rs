@@ -48,13 +48,19 @@ impl Api<'_> {
             .header("Content-Type", "application/json")
             .send();
 
-        let response = response.await.unwrap();
+        let response = response.await;
+        match response {
+            Ok(response) => self.handle_response(response).await,
+            Err(e) => Err(format!("Error: {}", e)),
+        }
+    }
+
+    async fn handle_response(response: reqwest::Response) -> Result<PullRequestChange, String> {
         let status = response.status();
         let body = response.text().await.unwrap();
 
         if status.is_success() {
-            let pull_request_changes: PullRequestChange =
-                serde_json::from_str(body.as_str()).unwrap();
+            let pull_request_changes: PullRequestChange = serde_json::from_str(body.as_str()).unwrap();
             Ok(pull_request_changes)
         } else {
             Err(format!("Error Response [{}]: {}", status, body))

@@ -1,7 +1,11 @@
 [package]
 name = "bitbucket-server-rs"
+description = "An API client library for Bitbucket Data Center"
 version = "0.1.0"
 edition = "2021"
+license-file = "LICENSE"
+repository = "https://github.com/acfabro/bitbucket-server-rs"
+readme = "README.md"
 
 [dependencies]
 serde = { version = "1.0.217", features = ["derive"] }
