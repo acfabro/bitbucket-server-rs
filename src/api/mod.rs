@@ -1,11 +1,12 @@
 use crate::client::Client;
 
-pub mod build_status;
-pub mod pull_request_changes;
+mod build_status_get;
+mod build_status_post;
+mod pull_request_changes_get;
 
 /// Bitbucket's `api` API. i.e. `https://bibucket-server/rest/api`
-pub struct Api<'a> {
+pub struct Api {
     /// The http client to use for making requests. This includes
     /// the base URL, the HTTP client, and the API token.
-    pub client: &'a Client,
+    pub client: Client,
 }

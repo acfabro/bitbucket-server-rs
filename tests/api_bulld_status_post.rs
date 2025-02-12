@@ -1,13 +1,8 @@
-use bitbucket_server_rs::api::build_status::*;
 use bitbucket_server_rs::client;
 use chrono::{DateTime, Utc};
 use httpmock::Method::POST;
 use httpmock::MockServer;
 use serde_json::json;
-
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
 
 #[tokio::test]
 async fn it_can_post_build_status() {
@@ -21,8 +16,8 @@ async fn it_can_post_build_status() {
             .json_body(json!({
                 "key": "KEY",
                 "state": "SUCCESSFUL",
-                "url": "URL",
-                "buildNumber": "1",
+                "url": "https://my-build-status.com/path",
+                "buildNumber": "9",
                 "dateAdded": 1738198923,
                 "duration": 12,
                 "description": "DESCRIPTION",
@@ -35,39 +30,40 @@ async fn it_can_post_build_status() {
                     "skipped": 1
                 }
             }));
-        then.status(200);
+        then.status(204);
     });
 
-    let client = client::new_client(
+    let client = client::new(
         server.url("").to_string(),
         reqwest::Client::new(),
         "API_TOKEN".to_string(),
     );
 
-    let params = PostBuildStatusParams::new(
-        "PROJECT_KEY".to_string(),
-        "COMMIT_ID".to_string(),
-        "REPOSITORY_SLUG".to_string(),
-        BuildStatus::new(
+    let result = client
+        .api()
+        .post_build_status(
+            "PROJECT_KEY".to_string(),
+            "COMMIT_ID".to_string(),
+            "REPOSITORY_SLUG".to_string(),
             "KEY".to_string(),
-            BuildStatusState::Successful,
-            "URL".to_string(),
+            "https://my-build-status.com/path".to_string(),
         )
-        .with_build_number("1".to_string())
-        .with_date_added(
+        .build_number("9".to_string())
+        .state_successful()
+        .date_added(
             DateTime::parse_from_rfc3339("2025-01-30T01:02:03Z")
                 .unwrap()
                 .with_timezone(&Utc),
         )
-        .with_duration_secs(12)
-        .with_description("DESCRIPTION".to_string())
-        .with_name("NAME".to_string())
-        .with_parent("PARENT".to_string())
-        .with_reference("REF".to_string())
-        .with_test_results(3, 2, 1),
-    );
+        .duration_secs(12)
+        .description("DESCRIPTION".to_string())
+        .name("NAME".to_string())
+        .parent("PARENT".to_string())
+        .reference("REF".to_string())
+        .test_results(3, 2, 1)
+        .send()
+        .await;
 
-    let result = client.api().post_build_status(params).await;
     assert!(result.is_ok());
     mock.assert();
 }

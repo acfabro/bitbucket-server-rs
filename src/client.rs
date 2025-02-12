@@ -1,6 +1,7 @@
 use crate::api;
 
 /// Configuration for the API http client
+#[derive(Clone, Debug)]
 pub struct Client {
     /// Base URL for the bitbucket server. It must end with `/rest`.
     pub base_path: String,
@@ -12,8 +13,8 @@ pub struct Client {
 
 impl Client {
     /// Bitbucket's `api` API.
-    pub fn api(&self) -> api::Api {
-        api::Api { client: &self }
+    pub fn api(self) -> api::Api {
+        api::Api { client: self }
     }
 }
 
@@ -29,21 +30,28 @@ impl Client {
 ///
 /// # Example
 /// ```rust
-/// use reqwest::Client;
-/// use bitbucket_server_rs::api::pull_request_changes::PullRequestChange;
 /// use bitbucket_server_rs::client;
 ///
-/// async fn example() -> Result<PullRequestChange, String> {
-///     let client = client::new_client(
-///        "https://bitbucket-server/rest".to_string(),
-///         Client::new(),
-///        "API_TOKEN".to_string()
+/// async fn example() -> Result<(), String> {
+///     let client = client::new(
+///         "https://bitbucket-server/rest".to_string(),
+///          reqwest::Client::new(),
+///         "API_TOKEN".to_string()
 ///     );
 ///
-///     client.api().get_pull_request_changes("GOLF".to_string(), "115".to_string(), "golf-course".to_string()).await
+///     let _ = client.api()
+///         .get_pull_request_changes(
+///             "GOLF".to_string(),
+///             "115".to_string(),
+///             "golf-course".to_string()
+///         )
+///         .send()
+///         .await?;
+///
+///     Ok(())
 /// }
 /// ```
-pub fn new_client(base_path: String, client: reqwest::Client, api_token: String) -> Client {
+pub fn new(base_path: String, client: reqwest::Client, api_token: String) -> Client {
     Client {
         base_path,
         client,

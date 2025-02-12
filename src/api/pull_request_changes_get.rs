@@ -1,69 +1,105 @@
 use crate::api::Api;
+use crate::client::Client;
+use reqwest::{Method, StatusCode};
 use serde::{Deserialize, Serialize};
 
 /// This module is responsible for handling the pull request changes API.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct PullRequestChange {
+pub struct PullRequestChanges {
     #[serde(rename = "fromHash")]
-    pub from_hash: String,
+    from_hash: String,
     #[serde(rename = "toHash")]
-    pub to_hash: String,
+    to_hash: String,
     /// Array of changes
     #[serde(rename = "values", skip_serializing_if = "Option::is_none")]
-    pub values: Option<Vec<Change>>,
+    values: Option<Vec<ChangeItem>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Change {
+struct ChangeItem {
     #[serde(rename = "contentId")]
-    pub content_id: String,
+    content_id: String,
     #[serde(rename = "type")]
-    pub change_type: String,
+    change_type: String,
     #[serde(rename = "path")]
-    pub path: Path,
+    path: Path,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Path {
+struct Path {
     #[serde(rename = "toString")]
-    pub to_string: String,
+    to_string: String,
 }
 
-impl Api<'_> {
-    pub async fn get_pull_request_changes(
-        &self,
-        project_key: String,
-        pull_request_id: String,
-        repository_slug: String,
-    ) -> Result<PullRequestChange, String> {
-        let http_client = &self.client.client;
+pub struct PullRequestChangesBuilder {
+    client: Client,
+    project_key: String,
+    pull_request_id: String,
+    repository_slug: String,
+}
+
+impl PullRequestChangesBuilder {
+    pub async fn send(&self) -> Result<PullRequestChanges, String> {
+        let api_client = self;
+
         let request_uri = format!(
             "{}/api/latest/projects/{}/repos/{}/pull-requests/{}/changes",
-            self.client.base_path, project_key, repository_slug, pull_request_id
+            api_client.client.base_path,
+            self.project_key,
+            self.repository_slug,
+            self.pull_request_id
         );
 
-        let response = http_client
-            .get(request_uri.as_str())
-            .header("Authorization", format!("Bearer {}", self.client.api_token))
-            .header("Content-Type", "application/json")
-            .send();
+        let http_client = &api_client.client.client;
+        let request_builder = http_client
+            .request(Method::GET, request_uri.as_str())
+            .header("Content-Type", "application/json");
 
-        let response = response.await;
-        match response {
-            Ok(response) => self.handle_response(response).await,
-            Err(e) => Err(format!("Error: {}", e)),
+        let request = request_builder.build().unwrap();
+        let response = http_client.execute(request).await.unwrap();
+
+        match response.status() {
+            //
+            StatusCode::OK => {
+                let pull_request_changes = Self::handle_response(response).await;
+                pull_request_changes
+            },
+
+            //
+            _ => Err(format!(
+                "Unexpected Response [{}]: {}",
+                response.status(),
+                response.text().await.unwrap()
+            )),
         }
     }
 
-    async fn handle_response(response: reqwest::Response) -> Result<PullRequestChange, String> {
+    async fn handle_response(response: reqwest::Response) -> Result<PullRequestChanges, String> {
         let status = response.status();
         let body = response.text().await.unwrap();
 
         if status.is_success() {
-            let pull_request_changes: PullRequestChange = serde_json::from_str(body.as_str()).unwrap();
+            let pull_request_changes: PullRequestChanges =
+                serde_json::from_str(body.as_str()).unwrap();
             Ok(pull_request_changes)
         } else {
             Err(format!("Error Response [{}]: {}", status, body))
+        }
+    }
+}
+
+impl Api {
+    pub fn get_pull_request_changes(
+        self,
+        project_key: String,
+        pull_request_id: String,
+        repository_slug: String,
+    ) -> PullRequestChangesBuilder {
+        PullRequestChangesBuilder {
+            client: self.client,
+            project_key,
+            pull_request_id,
+            repository_slug,
         }
     }
 }
@@ -83,22 +119,22 @@ mod tests {
             ]
         }"#;
 
-        let pull_request_changes: PullRequestChange = serde_json::from_str(json).unwrap();
+        let pull_request_changes: PullRequestChanges = serde_json::from_str(json).unwrap();
 
         assert_eq!(
             pull_request_changes,
-            PullRequestChange {
+            PullRequestChanges {
                 from_hash: "from_hash".to_string(),
                 to_hash: "to_hash".to_string(),
                 values: Some(vec![
-                    Change {
+                    ChangeItem {
                         content_id: "12345".to_string(),
                         change_type: "ADD".to_string(),
                         path: Path {
                             to_string: "path/to/file".to_string()
                         }
                     },
-                    Change {
+                    ChangeItem {
                         content_id: "67890".to_string(),
                         change_type: "COPY".to_string(),
                         path: Path {
@@ -112,18 +148,18 @@ mod tests {
 
     #[test]
     fn it_can_serialize() {
-        let pull_request_changes = PullRequestChange {
+        let pull_request_changes = PullRequestChanges {
             from_hash: "from_hash".to_string(),
             to_hash: "to_hash".to_string(),
             values: Some(vec![
-                Change {
+                ChangeItem {
                     content_id: "12345".to_string(),
                     change_type: "ADD".to_string(),
                     path: Path {
                         to_string: "path/to/file".to_string(),
                     },
                 },
-                Change {
+                ChangeItem {
                     content_id: "67890".to_string(),
                     change_type: "COPY".to_string(),
                     path: Path {
