@@ -36,6 +36,9 @@ pub struct PullRequestChangesBuilder {
     project_key: String,
     pull_request_id: String,
     repository_slug: String,
+    path: String,
+
+    // todo: add other fields
 }
 
 impl PullRequestChangesBuilder {
@@ -43,11 +46,12 @@ impl PullRequestChangesBuilder {
         let api_client = self;
 
         let request_uri = format!(
-            "{}/api/latest/projects/{}/repos/{}/pull-requests/{}/changes",
+            "{}/api/latest/projects/{}/repos/{}/pull-requests/{}/changes?path={}",
             api_client.client.base_path,
             self.project_key,
             self.repository_slug,
-            self.pull_request_id
+            self.pull_request_id,
+            self.path,
         );
 
         let http_client = &api_client.client.client;
@@ -94,12 +98,14 @@ impl Api {
         project_key: String,
         pull_request_id: String,
         repository_slug: String,
+        path: String,
     ) -> PullRequestChangesBuilder {
         PullRequestChangesBuilder {
             client: self.client,
             project_key,
             pull_request_id,
             repository_slug,
+            path,
         }
     }
 }

@@ -15,11 +15,14 @@ async fn main() {
     );
 
     let response = client
+        // using the `api` API
         .api()
+        // get the list of changes of a pull request
         .get_pull_request_changes(
-            "PROJECT_KEY".to_string(),
-            "PULL_REQUEST_ID".to_string(),
-            "REPOSITORY_SLUG".to_string(),
+            "MYPROJECT".to_string(),
+            "42".to_string(),
+            "repository-one".to_string(),
+            "src/".to_string()
         )
         .send()
         .await;

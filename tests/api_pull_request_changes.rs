@@ -32,6 +32,7 @@ async fn it_can_get_pull_request_changes() {
             "PROJECT_KEY".to_string(),
             "PULL_REQUEST_ID".to_string(),
             "REPOSITORY_SLUG".to_string(),
+            "PATH".to_string(),
         )
         .send()
         .await;

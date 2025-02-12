@@ -43,7 +43,8 @@ impl Client {
 ///         .get_pull_request_changes(
 ///             "GOLF".to_string(),
 ///             "115".to_string(),
-///             "golf-course".to_string()
+///             "golf-course".to_string(),
+///             "src/".to_string()
 ///         )
 ///         .send()
 ///         .await?;
