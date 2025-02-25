@@ -1,8 +1,9 @@
 use crate::client::Client;
 
-mod build_status_get;
-mod build_status_post;
-mod pull_request_changes_get;
+pub mod build_status;
+pub mod build_status_get;
+pub mod build_status_post;
+pub mod pull_request_changes_get;
 
 /// Bitbucket's `api` API. i.e. `https://bibucket-server/rest/api`
 pub struct Api {

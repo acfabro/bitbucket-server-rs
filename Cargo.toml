@@ -11,8 +11,9 @@ readme = "README.md"
 serde = { version = "1.0.217", features = ["derive"] }
 reqwest = { version = "0.12.12", features = ["json"] }
 serde_json = "1.0.138"
-chrono = { version = "0.4.39", features = ["serde", ] }
+chrono = { version = "0.4.39", features = ["serde"] }
 log = "0.4.25"
+env_logger = "0.11.6"
 
 [dev-dependencies]
 tokio = { version = "1.43.0", features = ["full"] }

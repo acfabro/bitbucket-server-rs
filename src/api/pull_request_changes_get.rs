@@ -1,14 +1,13 @@
 use crate::api::Api;
-use crate::client::Client;
-use reqwest::{Method, StatusCode};
+use crate::client::{ApiRequest, ApiResponse, Client};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// This module is responsible for handling the pull request changes API.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct PullRequestChanges {
-    #[serde(rename = "fromHash")]
     from_hash: String,
-    #[serde(rename = "toHash")]
     to_hash: String,
     /// Array of changes
     #[serde(rename = "values", skip_serializing_if = "Option::is_none")]
@@ -31,64 +30,83 @@ struct Path {
     to_string: String,
 }
 
-pub struct PullRequestChangesBuilder {
+pub struct PullRequestChangesGetBuilder {
     client: Client,
     project_key: String,
     pull_request_id: String,
     repository_slug: String,
-    path: String,
-
-    // todo: add other fields
+    /// The "since" commit hash to stream changes for a RANGE arbitrary change scope
+    since_id: Option<String>,
+    /// UNREVIEWED to stream the unreviewed changes for the current user (if they exist); RANGE to stream changes between two arbitrary commits (requires 'sinceId' and 'untilId'); otherwise ALL to stream all changes (the default)
+    change_scope: Option<String>,
+    /// The "until" commit hash to stream changes for a RANGE arbitrary change scope
+    until_id: Option<String>,
+    /// Start number for the page (inclusive). If not passed, first page is assumed.
+    start: Option<u32>,
+    /// Number of items to return. If not passed, a page size of 25 is used.
+    limit: Option<u32>,
+    /// If true, the response will include all comments on the changed files
+    with_comments: Option<bool>,
 }
 
-impl PullRequestChangesBuilder {
-    pub async fn send(&self) -> Result<PullRequestChanges, String> {
-        let api_client = self;
+impl PullRequestChangesGetBuilder {
+    pub fn since_id(mut self, since_id: &str) -> Self {
+        self.since_id = Some(since_id.to_string());
+        self
+    }
+    pub fn change_scope(mut self, change_scope: &str) -> Self {
+        self.change_scope = Some(change_scope.to_string());
+        self
+    }
+    pub fn until_id(mut self, until_id: &str) -> Self {
+        self.until_id = Some(until_id.to_string());
+        self
+    }
+    pub fn start(mut self, start: u32) -> Self {
+        self.start = Some(start);
+        self
+    }
+    pub fn limit(mut self, limit: u32) -> Self {
+        self.limit = Some(limit);
+        self
+    }
+    pub fn with_comments(mut self, with_comments: bool) -> Self {
+        self.with_comments = Some(with_comments);
+        self
+    }
+}
 
+impl ApiRequest for PullRequestChangesGetBuilder {
+    type Output = PullRequestChanges;
+
+    async fn send(&self) -> ApiResponse<Self::Output> {
         let request_uri = format!(
-            "{}/api/latest/projects/{}/repos/{}/pull-requests/{}/changes?path={}",
-            api_client.client.base_path,
-            self.project_key,
-            self.repository_slug,
-            self.pull_request_id,
-            self.path,
+            "api/latest/projects/{}/repos/{}/pull-requests/{}/changes",
+            self.project_key, self.repository_slug, self.pull_request_id
         );
 
-        let http_client = &api_client.client.client;
-        let request_builder = http_client
-            .request(Method::GET, request_uri.as_str())
-            .header("Content-Type", "application/json");
+        let mut params = HashMap::new();
 
-        let request = request_builder.build().unwrap();
-        let response = http_client.execute(request).await.unwrap();
-
-        match response.status() {
-            //
-            StatusCode::OK => {
-                let pull_request_changes = Self::handle_response(response).await;
-                pull_request_changes
-            },
-
-            //
-            _ => Err(format!(
-                "Unexpected Response [{}]: {}",
-                response.status(),
-                response.text().await.unwrap()
-            )),
+        if let Some(since_id) = &self.since_id {
+            params.insert("sinceId".to_string(), since_id.clone());
         }
-    }
-
-    async fn handle_response(response: reqwest::Response) -> Result<PullRequestChanges, String> {
-        let status = response.status();
-        let body = response.text().await.unwrap();
-
-        if status.is_success() {
-            let pull_request_changes: PullRequestChanges =
-                serde_json::from_str(body.as_str()).unwrap();
-            Ok(pull_request_changes)
-        } else {
-            Err(format!("Error Response [{}]: {}", status, body))
+        if let Some(change_scope) = &self.change_scope {
+            params.insert("changeScope".to_string(), change_scope.clone());
         }
+        if let Some(until_id) = &self.until_id {
+            params.insert("untilId".to_string(), until_id.clone());
+        }
+        if let Some(start) = &self.start {
+            params.insert("start".to_string(), start.to_string());
+        }
+        if let Some(limit) = &self.limit {
+            params.insert("limit".to_string(), limit.to_string());
+        }
+        if let Some(with_comments) = &self.with_comments {
+            params.insert("withComments".to_string(), with_comments.to_string());
+        }
+
+        self.client.get::<Self>(&request_uri, Some(params)).await
     }
 }
 
@@ -96,16 +114,20 @@ impl Api {
     pub fn get_pull_request_changes(
         self,
         project_key: String,
-        pull_request_id: String,
         repository_slug: String,
-        path: String,
-    ) -> PullRequestChangesBuilder {
-        PullRequestChangesBuilder {
+        pull_request_id: String,
+    ) -> PullRequestChangesGetBuilder {
+        PullRequestChangesGetBuilder {
             client: self.client,
             project_key,
             pull_request_id,
             repository_slug,
-            path,
+            since_id: None,
+            change_scope: None,
+            until_id: None,
+            start: None,
+            limit: None,
+            with_comments: None,
         }
     }
 }

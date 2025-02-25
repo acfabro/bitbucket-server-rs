@@ -1,53 +1,44 @@
-use crate::api::build_status_post::BuildStatusState;
+use crate::api::build_status::{BuildStatusState, TestResults};
 use crate::api::Api;
-use crate::client::Client;
+use crate::client::{ApiRequest, ApiResponse, Client};
 use chrono::{serde::ts_seconds_option, DateTime, Utc};
-use reqwest::{Method, StatusCode};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-///
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-struct BuildStatus {
-    key: String,
-    state: BuildStatusState,
-    url: String,
-
-    #[serde(rename = "buildNumber", skip_serializing_if = "Option::is_none")]
-    build_number: Option<String>,
-
-    #[serde(
-        rename = "updatedDate",
-        with = "ts_seconds_option",
-        skip_serializing_if = "Option::is_none",
-        default
-    )]
-    updated_date: Option<DateTime<Utc>>,
-
-    #[serde(
-        rename = "createdDate",
-        with = "ts_seconds_option",
-        skip_serializing_if = "Option::is_none",
-        default
-    )]
-    created_date: Option<DateTime<Utc>>,
+/// The build status associated with the provided commit and key.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BuildStatus {
+    pub key: String,
+    pub state: BuildStatusState,
+    pub url: String,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
+    pub build_number: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none", with = "ts_seconds_option")]
+    pub updated_date: Option<DateTime<Utc>>,
+
+    #[serde(skip_serializing_if = "Option::is_none", with = "ts_seconds_option")]
+    pub created_date: Option<DateTime<Utc>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    duration: Option<u64>,
+    pub description: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    name: Option<String>,
+    pub duration: Option<u64>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    parent: Option<String>,
+    pub name: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent: Option<String>,
 
     #[serde(rename = "ref", skip_serializing_if = "Option::is_none")]
-    reference: Option<String>,
+    pub reference: Option<String>,
 
-    #[serde(rename = "testResults", skip_serializing_if = "Option::is_none")]
-    test_results: Option<crate::api::build_status_post::TestResults>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub test_results: Option<TestResults>,
 }
 
 #[derive(Debug)]
@@ -60,44 +51,43 @@ pub struct BuildStatusGetBuilder {
 }
 
 impl BuildStatusGetBuilder {
-    pub fn key(mut self, key: String) -> Self {
-        self.key = Some(key);
+    /// the key of the build status
+    pub fn key(mut self, key: &str) -> Self {
+        self.key = Some(key.to_string());
         self
     }
+}
 
-    pub async fn send(&self) -> Result<(), String> {
-        let api_client = self;
+impl ApiRequest for BuildStatusGetBuilder {
+    type Output = BuildStatus;
 
+    async fn send(&self) -> ApiResponse<Self::Output> {
         let request_uri = format!(
-            "{}/api/v1/repos/{}/{}/commits/{}/build-status",
-            api_client.client.base_path, self.project_key, self.repository_slug, self.commit_id
+            "api/latest/projects/{}/repos/{}/commits/{}/builds",
+            self.project_key, self.repository_slug, self.commit_id
         );
 
-        let http_client = &api_client.client.client;
-        let request_builder = http_client
-            .request(Method::POST, request_uri.as_str())
-            .header("Content-Type", "application/json");
+        let mut params = HashMap::new();
 
-        let request = request_builder.build().unwrap();
-        let response = http_client.execute(request).await.unwrap();
-
-        match response.status() {
-            //
-            StatusCode::OK => Ok(()),
-            //
-            _ => Err(format!(
-                "Unexpected Response [{}]: {}",
-                response.status(),
-                response.text().await.unwrap()
-            )),
+        if let Some(key) = &self.key {
+            params.insert("key".to_string(), key.clone());
         }
+
+        self.client
+            .get::<BuildStatusGetBuilder>(&request_uri, Some(params))
+            .await
     }
 }
 
 impl Api {
     /// Get a specific build status.
     ///
-    /// https://developer.atlassian.com/server/bitbucket/rest/latest/api-group-builds-and-deployments/#api-api-latest-projects-projectkey-repos-repositoryslug-commits-commitid-builds-get
+    /// See the [Bitbucket Data Center REST API documentation](https://developer.atlassian.com/server/bitbucket/rest/v905/api-group-builds-and-deployments/#api-api-latest-projects-projectkey-repos-repositoryslug-commits-commitid-builds-get).
+    ///
+    /// # Arguments
+    /// * `project_key` - the key of the project
+    /// * `commit_id` - the commit id
+    /// * `repository_slug` - the slug of the repository
     pub fn get_build_status(
         self,
         project_key: String,
@@ -127,7 +117,7 @@ mod tests {
             "url": "https://my-build-status.com/path",
             "buildNumber": "9",
             "createdDate": 1738198923,
-            "updatedDate": 1738198923,
+            "updatedDate": 1738198924,
             "duration": 12,
             "description": "DESCRIPTION",
             "name": "NAME",
@@ -147,7 +137,7 @@ mod tests {
         assert_eq!(build_status.url, "https://my-build-status.com/path");
         assert_eq!(build_status.build_number.unwrap(), "9");
         assert_eq!(build_status.created_date.unwrap().timestamp(), 1738198923);
-        assert_eq!(build_status.updated_date.unwrap().timestamp(), 1738198923);
+        assert_eq!(build_status.updated_date.unwrap().timestamp(), 1738198924);
         assert_eq!(build_status.duration.unwrap(), 12);
         assert_eq!(build_status.description.unwrap(), "DESCRIPTION");
         assert_eq!(build_status.name.unwrap(), "NAME");
@@ -155,7 +145,7 @@ mod tests {
         assert_eq!(build_status.reference.unwrap(), "REF");
         assert_eq!(
             build_status.test_results.unwrap(),
-            crate::api::build_status_post::TestResults {
+            TestResults {
                 failed: 2,
                 successful: 3,
                 skipped: 1
