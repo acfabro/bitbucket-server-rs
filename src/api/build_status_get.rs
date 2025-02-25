@@ -88,7 +88,7 @@ impl Api {
     /// * `project_key` - the key of the project
     /// * `commit_id` - the commit id
     /// * `repository_slug` - the slug of the repository
-    pub fn get_build_status(
+    pub fn build_status_get(
         self,
         project_key: String,
         commit_id: String,

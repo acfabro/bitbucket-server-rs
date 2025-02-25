@@ -160,7 +160,7 @@ impl Api {
     /// status is for. The request can also be made with anonymous 2-legged OAuth.
     ///
     /// See [Bitbucket Data Center REST API Docs](https://developer.atlassian.com/server/bitbucket/rest/v811/api-group-builds-and-deployments/#api-api-latest-projects-projectkey-repos-repositoryslug-commits-commitid-builds-post)
-    pub fn post_build_status(
+    pub fn build_status_post(
         self,
         project_key: String,
         commit_id: String,

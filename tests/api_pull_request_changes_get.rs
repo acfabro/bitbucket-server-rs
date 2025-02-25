@@ -24,7 +24,7 @@ async fn it_can_get_pull_request_changes() {
 
     let response = client
         .api()
-        .get_pull_request_changes(
+        .pull_request_changes_get(
             "PROJECT_KEY".to_string(),
             "REPOSITORY_SLUG".to_string(),
             "PULL_REQUEST_ID".to_string(),
@@ -63,7 +63,7 @@ async fn it_can_get_pull_request_changes_with_params() {
 
     let response = client
         .api()
-        .get_pull_request_changes(
+        .pull_request_changes_get(
             "PROJECT_KEY".to_string(),
             "REPOSITORY_SLUG".to_string(),
             "PULL_REQUEST_ID".to_string(),

@@ -18,7 +18,7 @@ async fn it_can_get_build_status() {
 
     let response = client
         .api()
-        .get_build_status(
+        .build_status_get(
             "PROJECT_KEY".to_string(),
             "COMMIT_ID".to_string(),
             "REPOSITORY_SLUG".to_string(),
@@ -44,7 +44,7 @@ async fn it_can_get_build_status_with_key() {
 
     let response = client
         .api()
-        .get_build_status(
+        .build_status_get(
             "PROJECT_KEY".to_string(),
             "COMMIT_ID".to_string(),
             "REPOSITORY_SLUG".to_string(),
@@ -71,7 +71,7 @@ async fn it_can_get_build_status_object() {
 
     let response = client
         .api()
-        .get_build_status(
+        .build_status_get(
             "PROJECT_KEY".to_string(),
             "COMMIT_ID".to_string(),
             "REPOSITORY_SLUG".to_string(),
