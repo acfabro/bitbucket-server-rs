@@ -73,7 +73,7 @@ pub fn new(base_path: &str, api_token: &str) -> Client {
 /// Implementations for the bitbucket API client
 impl Client {
     /// Create a request builder
-    pub async fn builder(&self, req: RequestBuilder) -> RequestBuilder {
+    pub fn builder(&self, req: RequestBuilder) -> RequestBuilder {
         req.header("Authorization", format!("Bearer {}", self.api_token))
             .header("Content-Type", "application/json")
     }
