@@ -5,7 +5,7 @@ use httpmock::Method::GET;
 
 #[tokio::test]
 async fn it_can_get_pull_request_changes() {
-    // common::setup();
+    common::setup();
     let (server, client) = common::mock_client();
 
     let mock = server.mock(|when, then| {
@@ -38,7 +38,7 @@ async fn it_can_get_pull_request_changes() {
 
 #[tokio::test]
 async fn it_can_get_pull_request_changes_with_params() {
-    // common::setup();
+    common::setup();
     let (server, client) = common::mock_client();
 
     let mock = server.mock(|when, then| {

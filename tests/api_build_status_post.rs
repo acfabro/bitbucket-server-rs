@@ -9,7 +9,7 @@ use serde_json::json;
 
 #[tokio::test]
 async fn it_can_post_build_status() {
-    // common::setup();
+    common::setup();
 
     let (server, client) = mock_client();
 

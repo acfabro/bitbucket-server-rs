@@ -6,7 +6,7 @@ use httpmock::Method::GET;
 
 #[tokio::test]
 async fn it_can_get_build_status() {
-    // common::setup();
+    common::setup();
     let (server, client) = common::mock_client();
 
     let mock = server.mock(|when, then| {
@@ -32,7 +32,7 @@ async fn it_can_get_build_status() {
 
 #[tokio::test]
 async fn it_can_get_build_status_with_key() {
-    // common::setup();
+    common::setup();
     let (server, client) = common::mock_client();
 
     let mock = server.mock(|when, then| {
@@ -59,7 +59,7 @@ async fn it_can_get_build_status_with_key() {
 
 #[tokio::test]
 async fn it_can_get_build_status_object() {
-    // common::setup();
+    common::setup();
     let (server, client) = common::mock_client();
 
     let mock = server.mock(|when, then| {
