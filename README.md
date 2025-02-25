@@ -5,29 +5,29 @@ Bindings for Bitbucket Data Center REST API written in Rust.
 ## Usage
 
 ```rust
-use bitbucket_server_rs::client;
+use bitbucket_server_rs::client::{new, ApiError, ApiRequest, ApiResponse};
+use bitbucket_server_rs::api::build_status_get::BuildStatus;
 
+#[tokio::main]
 async fn main() {
-    let client = client::new(
-        server.url("https://my-bitbucket-server.com/rest").to_string(),
-        reqwest::Client::new(),
-        "abc123def456".to_string(),
+    let client = new(
+        "https://bitbucket-server/rest",
+        "API_TOKEN"
     );
-
+    
     let response = client
-        // using the `api` API
         .api()
-        // get the list of changes of a pull request
-        .get_pull_request_changes(
-            "MYPROJECT".to_string(),
-            "42".to_string(),
-            "repository-one".to_string(),
-            "src/".to_string()
+        .get_build_status(
+            "PROJECT_KEY".to_string(),
+            "COMMIT_ID".to_string(),
+            "REPOSITORY_SLUG".to_string(),
         )
+        .key("ABC123")
         .send()
         .await;
     
-    println!("Got response: {:?}", response);
+    // Handle the response
+    println!("{:?}", response);
 }
 ```
 

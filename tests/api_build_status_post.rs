@@ -1,4 +1,7 @@
+mod common;
+
 use bitbucket_server_rs::client;
+use bitbucket_server_rs::client::ApiRequest;
 use chrono::{DateTime, Utc};
 use httpmock::Method::POST;
 use httpmock::MockServer;
@@ -6,13 +9,13 @@ use serde_json::json;
 
 #[tokio::test]
 async fn it_can_post_build_status() {
-    // test that bitbucket_server_rs::client can post a build status
+    // common::setup();
 
-    let server = MockServer::start();
+    let (server, client) = mock_client();
+
     let mock = server.mock(|when, then| {
         when.method(POST)
-            .path("/api/v1/repos/PROJECT_KEY/REPOSITORY_SLUG/commits/COMMIT_ID/build-status")
-            .header("Content-Type", "application/json")
+            .path("/rest/api/latest/projects/PROJECT_KEY/repos/REPOSITORY_SLUG/commits/COMMIT_ID/builds")
             .json_body(json!({
                 "key": "KEY",
                 "state": "SUCCESSFUL",
@@ -33,12 +36,6 @@ async fn it_can_post_build_status() {
         then.status(204);
     });
 
-    let client = client::new(
-        server.url("").to_string(),
-        reqwest::Client::new(),
-        "API_TOKEN".to_string(),
-    );
-
     let result = client
         .api()
         .post_build_status(
@@ -48,8 +45,8 @@ async fn it_can_post_build_status() {
             "KEY".to_string(),
             "https://my-build-status.com/path".to_string(),
         )
-        .build_number("9".to_string())
         .state_successful()
+        .build_number("9".to_string())
         .date_added(
             DateTime::parse_from_rfc3339("2025-01-30T01:02:03Z")
                 .unwrap()
@@ -66,4 +63,11 @@ async fn it_can_post_build_status() {
 
     assert!(result.is_ok());
     mock.assert();
+}
+
+fn mock_client() -> (MockServer, client::Client) {
+    let server = MockServer::start();
+    let client = client::new(&server.url("/rest"), "API_TOKEN");
+
+    (server, client)
 }
