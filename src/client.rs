@@ -96,7 +96,6 @@ impl Client {
 
         let req = self
             .builder(get)
-            .await
             .build()
             .expect("Failed to build request");
 
@@ -118,7 +117,6 @@ impl Client {
 
         let req = self
             .builder(post)
-            .await
             .build()
             .expect("Failed to build request");
 
