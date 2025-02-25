@@ -38,7 +38,7 @@ async fn it_can_post_build_status() {
 
     let result = client
         .api()
-        .post_build_status(
+        .build_status_post(
             "PROJECT_KEY".to_string(),
             "COMMIT_ID".to_string(),
             "REPOSITORY_SLUG".to_string(),
