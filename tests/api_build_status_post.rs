@@ -58,6 +58,8 @@ async fn it_can_post_build_status() {
         .parent("PARENT".to_string())
         .reference("REF".to_string())
         .test_results(3, 2, 1)
+        .build()
+        .unwrap()
         .send()
         .await;
 

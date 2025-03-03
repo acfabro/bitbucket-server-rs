@@ -50,27 +50,27 @@ pub struct PullRequestChangesGetBuilder {
 }
 
 impl PullRequestChangesGetBuilder {
-    pub fn since_id(mut self, since_id: &str) -> Self {
+    pub fn since_id(&mut self, since_id: &str) -> &mut Self {
         self.since_id = Some(since_id.to_string());
         self
     }
-    pub fn change_scope(mut self, change_scope: &str) -> Self {
+    pub fn change_scope(&mut self, change_scope: &str) -> &mut Self {
         self.change_scope = Some(change_scope.to_string());
         self
     }
-    pub fn until_id(mut self, until_id: &str) -> Self {
+    pub fn until_id(&mut self, until_id: &str) -> &mut Self {
         self.until_id = Some(until_id.to_string());
         self
     }
-    pub fn start(mut self, start: u32) -> Self {
+    pub fn start(&mut self, start: u32) -> &mut Self {
         self.start = Some(start);
         self
     }
-    pub fn limit(mut self, limit: u32) -> Self {
+    pub fn limit(&mut self, limit: u32) -> &mut Self {
         self.limit = Some(limit);
         self
     }
-    pub fn with_comments(mut self, with_comments: bool) -> Self {
+    pub fn with_comments(&mut self, with_comments: bool) -> &mut Self {
         self.with_comments = Some(with_comments);
         self
     }

@@ -2,6 +2,7 @@ use crate::api::build_status::{BuildStatusState, TestResults};
 use crate::api::Api;
 use crate::client::{ApiRequest, ApiResponse, Client};
 use chrono::{serde::ts_seconds_option, DateTime, Utc};
+use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 
 /// The POST request payload
@@ -10,48 +11,38 @@ use serde::{Deserialize, Serialize};
 struct BuildStatusPostPayload {
     /// The string referring to this branch plan/job
     key: String,
-
     /// The build status state
     state: BuildStatusState,
-
     /// URL referring to the build result page in the CI tool.
     url: String,
-
     /// A unique identifier for this particular run of a plan
     #[serde(skip_serializing_if = "Option::is_none")]
     build_number: Option<String>,
-
     ///
     #[serde(skip_serializing_if = "Option::is_none", with = "ts_seconds_option")]
     date_added: Option<DateTime<Utc>>,
-
     /// Describes the build result
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<String>,
-
     /// Duration of a completed build
     #[serde(skip_serializing_if = "Option::is_none")]
     duration: Option<u64>,
-
     /// A short string that describes the build plan
     #[serde(skip_serializing_if = "Option::is_none")]
     name: Option<String>,
-
     /// The identifier for the plan or job that ran the branch plan that produced this build status.
     #[serde(skip_serializing_if = "Option::is_none")]
     parent: Option<String>,
-
     /// The fully qualified git reference e.g. refs/heads/master.
     #[serde(skip_serializing_if = "Option::is_none", rename = "ref")]
     reference: Option<String>,
-
     /// A summary of the passed, failed and skipped tests.
     #[serde(skip_serializing_if = "Option::is_none")]
     test_results: Option<TestResults>,
 }
 
-#[derive(Debug)]
-pub struct BuildStatusPostBuilder {
+#[derive(Debug, Builder)]
+pub struct BuildStatusPost {
     client: Client,
     project_key: String,
     commit_id: String,
@@ -59,79 +50,98 @@ pub struct BuildStatusPostBuilder {
     build_status: BuildStatusPostPayload,
 }
 
+/// custom setters for build_status
 impl BuildStatusPostBuilder {
-    pub fn build_number(mut self, build_number: String) -> BuildStatusPostBuilder {
-        self.build_status.build_number = Some(build_number);
+    pub fn state_successful(&mut self) -> &mut Self {
+        let mut build_status = self.build_status.clone().unwrap();
+        build_status.state = BuildStatusState::Successful;
+        self.build_status(build_status);
         self
     }
-
-    pub fn date_added(mut self, date_added: DateTime<Utc>) -> BuildStatusPostBuilder {
-        self.build_status.date_added = Some(date_added);
+    pub fn state_failed(&mut self) -> &mut Self {
+        let mut build_status = self.build_status.clone().unwrap();
+        build_status.state = BuildStatusState::Failed;
+        self.build_status(build_status);
         self
     }
-
-    pub fn description(mut self, description: String) -> BuildStatusPostBuilder {
-        self.build_status.description = Some(description);
+    pub fn state_in_progress(&mut self) -> &mut Self {
+        let mut build_status = self.build_status.clone().unwrap();
+        build_status.state = BuildStatusState::InProgress;
+        self.build_status(build_status);
         self
     }
-
-    pub fn duration_secs(mut self, duration: u64) -> BuildStatusPostBuilder {
-        self.build_status.duration = Some(duration);
+    pub fn state_cancelled(&mut self) -> &mut Self {
+        let mut build_status = self.build_status.clone().unwrap();
+        build_status.state = BuildStatusState::Cancelled;
+        self.build_status(build_status);
         self
     }
-
-    pub fn name(mut self, name: String) -> BuildStatusPostBuilder {
-        self.build_status.name = Some(name);
+    pub fn state_unknown(&mut self) -> &mut Self {
+        let mut build_status = self.build_status.clone().unwrap();
+        build_status.state = BuildStatusState::Unknown;
+        self.build_status(build_status);
         self
     }
-
-    pub fn parent(mut self, parent: String) -> BuildStatusPostBuilder {
-        self.build_status.parent = Some(parent);
+    pub fn build_number(&mut self, build_number: String) -> &mut Self {
+        let mut build_status = self.build_status.clone().unwrap();
+        build_status.build_number = Some(build_number);
+        self.build_status(build_status);
         self
     }
-
-    pub fn reference(mut self, reference: String) -> BuildStatusPostBuilder {
-        self.build_status.reference = Some(reference);
+    pub fn date_added(&mut self, date_added: DateTime<Utc>) -> &mut Self {
+        let mut build_status = self.build_status.clone().unwrap();
+        build_status.date_added = Some(date_added);
+        self.build_status(build_status);
         self
     }
-
+    pub fn description(&mut self, description: String) -> &mut Self {
+        let mut build_status = self.build_status.clone().unwrap();
+        build_status.description = Some(description);
+        self.build_status(build_status);
+        self
+    }
+    pub fn duration_secs(&mut self, duration: u64) -> &mut Self {
+        let mut build_status = self.build_status.clone().unwrap();
+        build_status.duration = Some(duration);
+        self.build_status(build_status);
+        self
+    }
+    pub fn name(&mut self, name: String) -> &mut Self {
+        let mut build_status = self.build_status.clone().unwrap();
+        build_status.name = Some(name);
+        self.build_status(build_status);
+        self
+    }
+    pub fn parent(&mut self, parent: String) -> &mut Self {
+        let mut build_status = self.build_status.clone().unwrap();
+        build_status.parent = Some(parent);
+        self.build_status(build_status);
+        self
+    }
+    pub fn reference(&mut self, reference: String) -> &mut Self {
+        let mut build_status = self.build_status.clone().unwrap();
+        build_status.reference = Some(reference);
+        self.build_status(build_status);
+        self
+    }
     pub fn test_results(
-        mut self,
+        &mut self,
         successful: u32,
         failed: u32,
         skipped: u32,
-    ) -> BuildStatusPostBuilder {
-        self.build_status.test_results = Some(TestResults {
+    ) -> &mut Self {
+        let mut build_status = self.build_status.clone().unwrap();
+        build_status.test_results = Some(TestResults {
             successful,
             failed,
             skipped,
         });
-        self
-    }
-
-    pub fn state_successful(mut self) -> BuildStatusPostBuilder {
-        self.build_status.state = BuildStatusState::Successful;
-        self
-    }
-    pub fn state_failed(mut self) -> BuildStatusPostBuilder {
-        self.build_status.state = BuildStatusState::Failed;
-        self
-    }
-    pub fn state_in_progress(mut self) -> BuildStatusPostBuilder {
-        self.build_status.state = BuildStatusState::InProgress;
-        self
-    }
-    pub fn state_cancelled(mut self) -> BuildStatusPostBuilder {
-        self.build_status.state = BuildStatusState::Cancelled;
-        self
-    }
-    pub fn state_unknown(mut self) -> BuildStatusPostBuilder {
-        self.build_status.state = BuildStatusState::Unknown;
+        self.build_status(build_status);
         self
     }
 }
 
-impl ApiRequest for BuildStatusPostBuilder {
+impl ApiRequest for BuildStatusPost {
     // response has no content
     type Output = ();
 
@@ -168,12 +178,13 @@ impl Api {
         build_status_key: String,
         build_status_url: String,
     ) -> BuildStatusPostBuilder {
-        BuildStatusPostBuilder {
-            client: self.client,
-            project_key,
-            commit_id,
-            repository_slug,
-            build_status: BuildStatusPostPayload {
+        let mut builder = BuildStatusPostBuilder::default();
+        builder
+            .client(self.client)
+            .project_key(project_key)
+            .commit_id(commit_id)
+            .repository_slug(repository_slug)
+            .build_status(BuildStatusPostPayload {
                 key: build_status_key,
                 state: BuildStatusState::Unknown,
                 url: build_status_url,
@@ -185,8 +196,9 @@ impl Api {
                 parent: None,
                 reference: None,
                 test_results: None,
-            },
-        }
+            });
+
+        builder
     }
 }
 

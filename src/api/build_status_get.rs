@@ -4,6 +4,7 @@ use crate::client::{ApiRequest, ApiResponse, Client};
 use chrono::{serde::ts_seconds_option, DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use derive_builder::Builder;
 
 /// The build status associated with the provided commit and key.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -41,24 +42,17 @@ pub struct BuildStatus {
     pub test_results: Option<TestResults>,
 }
 
-#[derive(Debug)]
-pub struct BuildStatusGetBuilder {
-    client: Client,
-    project_key: String,
-    commit_id: String,
-    repository_slug: String,
-    key: Option<String>,
+#[derive(Debug, Default, Builder)]
+pub struct BuildStatusGet {
+    pub client: Client,
+    pub project_key: String,
+    pub commit_id: String,
+    pub repository_slug: String,
+    #[builder(setter(into, strip_option), default)]
+    pub key: Option<String>,
 }
 
-impl BuildStatusGetBuilder {
-    /// the key of the build status
-    pub fn key(mut self, key: &str) -> Self {
-        self.key = Some(key.to_string());
-        self
-    }
-}
-
-impl ApiRequest for BuildStatusGetBuilder {
+impl ApiRequest for BuildStatusGet {
     type Output = BuildStatus;
 
     async fn send(&self) -> ApiResponse<Self::Output> {
@@ -74,7 +68,7 @@ impl ApiRequest for BuildStatusGetBuilder {
         }
 
         self.client
-            .get::<BuildStatusGetBuilder>(&request_uri, Some(params))
+            .get::<BuildStatusGet>(&request_uri, Some(params))
             .await
     }
 }
@@ -89,18 +83,18 @@ impl Api {
     /// * `commit_id` - the commit id
     /// * `repository_slug` - the slug of the repository
     pub fn get_build_status(
-        self,
-        project_key: String,
-        commit_id: String,
-        repository_slug: String,
+        &self,
+        project_key: &str,
+        commit_id: &str,
+        repository_slug: &str,
     ) -> BuildStatusGetBuilder {
-        BuildStatusGetBuilder {
-            client: self.client,
-            project_key,
-            commit_id,
-            repository_slug,
-            key: None,
-        }
+        let mut builder = BuildStatusGetBuilder::default();
+        builder
+            .client(self.client.clone())
+            .project_key(project_key.to_string())
+            .commit_id(commit_id.to_string())
+            .repository_slug(repository_slug.to_string());
+        builder
     }
 }
 

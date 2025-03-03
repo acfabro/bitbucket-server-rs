@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::future::Future;
 
 /// Configuration for the API http client
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Client {
     /// Base URL for the bitbucket server. It must end with `/rest`.
     pub base_path: String,
@@ -53,11 +53,13 @@ impl Client {
 ///     client
 ///        .api()
 ///        .get_build_status(
-///            "PROJECT_KEY".to_string(),
-///            "COMMIT_ID".to_string(),
-///            "REPOSITORY_SLUG".to_string(),
+///            "PROJECT_KEY",
+///            "COMMIT_ID",
+///            "REPOSITORY_SLUG",
 ///        )
 ///        .key("ABC123")
+///        .build()
+///        .unwrap()
 ///        .send()
 ///        .await
 /// }
