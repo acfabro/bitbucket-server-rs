@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::future::Future;
 
 /// Configuration for the API http client
-#[derive(Clone, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct Client {
     /// Base URL for the bitbucket server. It must end with `/rest`.
     pub base_path: String,
