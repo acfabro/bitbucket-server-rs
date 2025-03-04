@@ -111,7 +111,7 @@ impl ApiRequest for PullRequestChangesGetBuilder {
 }
 
 impl Api {
-    pub fn get_pull_request_changes(
+    pub fn pull_request_changes_get(
         self,
         project_key: String,
         repository_slug: String,
