@@ -2,143 +2,51 @@ use crate::api::build_status::{BuildStatusState, TestResults};
 use crate::api::Api;
 use crate::client::{ApiRequest, ApiResponse, Client};
 use chrono::{serde::ts_seconds_option, DateTime, Utc};
-use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 
 /// The POST request payload
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct BuildStatusPostPayload {
+pub struct BuildStatusPostPayload {
     /// The string referring to this branch plan/job
-    key: String,
+    pub key: String,
     /// The build status state
-    state: BuildStatusState,
+    pub state: BuildStatusState,
     /// URL referring to the build result page in the CI tool.
-    url: String,
+    pub url: String,
     /// A unique identifier for this particular run of a plan
     #[serde(skip_serializing_if = "Option::is_none")]
-    build_number: Option<String>,
-    ///
+    pub build_number: Option<String>,
+    /// Date added
     #[serde(skip_serializing_if = "Option::is_none", with = "ts_seconds_option")]
-    date_added: Option<DateTime<Utc>>,
+    pub date_added: Option<DateTime<Utc>>,
     /// Describes the build result
     #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
+    pub description: Option<String>,
     /// Duration of a completed build
     #[serde(skip_serializing_if = "Option::is_none")]
-    duration: Option<u64>,
+    pub duration: Option<u64>,
     /// A short string that describes the build plan
     #[serde(skip_serializing_if = "Option::is_none")]
-    name: Option<String>,
+    pub name: Option<String>,
     /// The identifier for the plan or job that ran the branch plan that produced this build status.
     #[serde(skip_serializing_if = "Option::is_none")]
-    parent: Option<String>,
+    pub parent: Option<String>,
     /// The fully qualified git reference e.g. refs/heads/master.
     #[serde(skip_serializing_if = "Option::is_none", rename = "ref")]
-    reference: Option<String>,
+    pub reference: Option<String>,
     /// A summary of the passed, failed and skipped tests.
     #[serde(skip_serializing_if = "Option::is_none")]
-    test_results: Option<TestResults>,
+    pub test_results: Option<TestResults>,
 }
 
-#[derive(Debug, Builder)]
+#[derive(Debug)]
 pub struct BuildStatusPost {
     client: Client,
     project_key: String,
     commit_id: String,
     repository_slug: String,
     build_status: BuildStatusPostPayload,
-}
-
-/// custom setters for build_status
-impl BuildStatusPostBuilder {
-    pub fn state_successful(&mut self) -> &mut Self {
-        let mut build_status = self.build_status.clone().unwrap();
-        build_status.state = BuildStatusState::Successful;
-        self.build_status(build_status);
-        self
-    }
-    pub fn state_failed(&mut self) -> &mut Self {
-        let mut build_status = self.build_status.clone().unwrap();
-        build_status.state = BuildStatusState::Failed;
-        self.build_status(build_status);
-        self
-    }
-    pub fn state_in_progress(&mut self) -> &mut Self {
-        let mut build_status = self.build_status.clone().unwrap();
-        build_status.state = BuildStatusState::InProgress;
-        self.build_status(build_status);
-        self
-    }
-    pub fn state_cancelled(&mut self) -> &mut Self {
-        let mut build_status = self.build_status.clone().unwrap();
-        build_status.state = BuildStatusState::Cancelled;
-        self.build_status(build_status);
-        self
-    }
-    pub fn state_unknown(&mut self) -> &mut Self {
-        let mut build_status = self.build_status.clone().unwrap();
-        build_status.state = BuildStatusState::Unknown;
-        self.build_status(build_status);
-        self
-    }
-    pub fn build_number(&mut self, build_number: String) -> &mut Self {
-        let mut build_status = self.build_status.clone().unwrap();
-        build_status.build_number = Some(build_number);
-        self.build_status(build_status);
-        self
-    }
-    pub fn date_added(&mut self, date_added: DateTime<Utc>) -> &mut Self {
-        let mut build_status = self.build_status.clone().unwrap();
-        build_status.date_added = Some(date_added);
-        self.build_status(build_status);
-        self
-    }
-    pub fn description(&mut self, description: String) -> &mut Self {
-        let mut build_status = self.build_status.clone().unwrap();
-        build_status.description = Some(description);
-        self.build_status(build_status);
-        self
-    }
-    pub fn duration_secs(&mut self, duration: u64) -> &mut Self {
-        let mut build_status = self.build_status.clone().unwrap();
-        build_status.duration = Some(duration);
-        self.build_status(build_status);
-        self
-    }
-    pub fn name(&mut self, name: String) -> &mut Self {
-        let mut build_status = self.build_status.clone().unwrap();
-        build_status.name = Some(name);
-        self.build_status(build_status);
-        self
-    }
-    pub fn parent(&mut self, parent: String) -> &mut Self {
-        let mut build_status = self.build_status.clone().unwrap();
-        build_status.parent = Some(parent);
-        self.build_status(build_status);
-        self
-    }
-    pub fn reference(&mut self, reference: String) -> &mut Self {
-        let mut build_status = self.build_status.clone().unwrap();
-        build_status.reference = Some(reference);
-        self.build_status(build_status);
-        self
-    }
-    pub fn test_results(
-        &mut self,
-        successful: u32,
-        failed: u32,
-        skipped: u32,
-    ) -> &mut Self {
-        let mut build_status = self.build_status.clone().unwrap();
-        build_status.test_results = Some(TestResults {
-            successful,
-            failed,
-            skipped,
-        });
-        self.build_status(build_status);
-        self
-    }
 }
 
 impl ApiRequest for BuildStatusPost {
@@ -170,35 +78,20 @@ impl Api {
     /// status is for. The request can also be made with anonymous 2-legged OAuth.
     ///
     /// See [Bitbucket Data Center REST API Docs](https://developer.atlassian.com/server/bitbucket/rest/v811/api-group-builds-and-deployments/#api-api-latest-projects-projectkey-repos-repositoryslug-commits-commitid-builds-post)
-    pub fn post_build_status(
+    pub fn build_status_post(
         self,
-        project_key: String,
-        commit_id: String,
-        repository_slug: String,
-        build_status_key: String,
-        build_status_url: String,
-    ) -> BuildStatusPostBuilder {
-        let mut builder = BuildStatusPostBuilder::default();
-        builder
-            .client(self.client)
-            .project_key(project_key)
-            .commit_id(commit_id)
-            .repository_slug(repository_slug)
-            .build_status(BuildStatusPostPayload {
-                key: build_status_key,
-                state: BuildStatusState::Unknown,
-                url: build_status_url,
-                build_number: None,
-                date_added: None,
-                description: None,
-                duration: None,
-                name: None,
-                parent: None,
-                reference: None,
-                test_results: None,
-            });
-
-        builder
+        project_key: &str,
+        commit_id: &str,
+        repository_slug: &str,
+        build_status: &BuildStatusPostPayload,
+    ) -> BuildStatusPost {
+        BuildStatusPost {
+            client: self.client,
+            project_key: project_key.to_owned(),
+            commit_id: commit_id.to_owned(),
+            repository_slug: repository_slug.to_owned(),
+            build_status: build_status.to_owned(),
+        }
     }
 }
 

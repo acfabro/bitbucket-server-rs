@@ -52,7 +52,7 @@ impl Client {
 ///
 ///     client
 ///        .api()
-///        .get_build_status(
+///        .build_status_get(
 ///            "PROJECT_KEY",
 ///            "COMMIT_ID",
 ///            "REPOSITORY_SLUG",

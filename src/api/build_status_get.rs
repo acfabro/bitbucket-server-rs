@@ -2,9 +2,9 @@ use crate::api::build_status::{BuildStatusState, TestResults};
 use crate::api::Api;
 use crate::client::{ApiRequest, ApiResponse, Client};
 use chrono::{serde::ts_seconds_option, DateTime, Utc};
+use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use derive_builder::Builder;
 
 /// The build status associated with the provided commit and key.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -82,7 +82,7 @@ impl Api {
     /// * `project_key` - the key of the project
     /// * `commit_id` - the commit id
     /// * `repository_slug` - the slug of the repository
-    pub fn get_build_status(
+    pub fn build_status_get(
         &self,
         project_key: &str,
         commit_id: &str,
