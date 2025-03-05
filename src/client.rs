@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::future::Future;
 
 /// Configuration for the API http client
-#[derive(Clone, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct Client {
     /// Base URL for the bitbucket server. It must end with `/rest`.
     pub base_path: String,
@@ -53,11 +53,13 @@ impl Client {
 ///     client
 ///        .api()
 ///        .build_status_get(
-///            "PROJECT_KEY".to_string(),
-///            "COMMIT_ID".to_string(),
-///            "REPOSITORY_SLUG".to_string(),
+///            "PROJECT_KEY",
+///            "COMMIT_ID",
+///            "REPOSITORY_SLUG",
 ///        )
 ///        .key("ABC123")
+///        .build()
+///        .unwrap()
 ///        .send()
 ///        .await
 /// }
@@ -73,7 +75,7 @@ pub fn new(base_path: &str, api_token: &str) -> Client {
 /// Implementations for the bitbucket API client
 impl Client {
     /// Create a request builder
-    pub fn builder(&self, req: RequestBuilder) -> RequestBuilder {
+    pub async fn builder(&self, req: RequestBuilder) -> RequestBuilder {
         req.header("Authorization", format!("Bearer {}", self.api_token))
             .header("Content-Type", "application/json")
     }
@@ -96,6 +98,7 @@ impl Client {
 
         let req = self
             .builder(get)
+            .await
             .build()
             .expect("Failed to build request");
 
@@ -117,6 +120,7 @@ impl Client {
 
         let req = self
             .builder(post)
+            .await
             .build()
             .expect("Failed to build request");
 

@@ -29,6 +29,8 @@ async fn it_can_get_pull_request_changes() {
             "REPOSITORY_SLUG".to_string(),
             "PULL_REQUEST_ID".to_string(),
         )
+        .build()
+        .unwrap()
         .send()
         .await;
 
@@ -71,9 +73,11 @@ async fn it_can_get_pull_request_changes_with_params() {
         .change_scope("SCOPE")
         .since_id("SINCE_ID")
         .until_id("UNTIL_ID")
-        .start(1)
-        .limit(10)
+        .start(1u32)
+        .limit(10u32)
         .with_comments(true)
+        .build()
+        .unwrap()
         .send()
         .await;
 
