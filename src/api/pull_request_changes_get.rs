@@ -1,5 +1,6 @@
 use crate::api::Api;
 use crate::client::{ApiRequest, ApiResponse, Client};
+use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -30,53 +31,33 @@ struct Path {
     to_string: String,
 }
 
-pub struct PullRequestChangesGetBuilder {
+#[derive(Debug, Default, Builder)]
+pub struct PullRequestChangesGet {
     client: Client,
     project_key: String,
     pull_request_id: String,
     repository_slug: String,
     /// The "since" commit hash to stream changes for a RANGE arbitrary change scope
+    #[builder(setter(into, strip_option), default)]
     since_id: Option<String>,
     /// UNREVIEWED to stream the unreviewed changes for the current user (if they exist); RANGE to stream changes between two arbitrary commits (requires 'sinceId' and 'untilId'); otherwise ALL to stream all changes (the default)
+    #[builder(setter(into, strip_option), default)]
     change_scope: Option<String>,
     /// The "until" commit hash to stream changes for a RANGE arbitrary change scope
+    #[builder(setter(into, strip_option), default)]
     until_id: Option<String>,
     /// Start number for the page (inclusive). If not passed, first page is assumed.
+    #[builder(setter(into, strip_option), default)]
     start: Option<u32>,
     /// Number of items to return. If not passed, a page size of 25 is used.
+    #[builder(setter(into, strip_option), default)]
     limit: Option<u32>,
     /// If true, the response will include all comments on the changed files
+    #[builder(setter(into, strip_option), default)]
     with_comments: Option<bool>,
 }
 
-impl PullRequestChangesGetBuilder {
-    pub fn since_id(&mut self, since_id: &str) -> &mut Self {
-        self.since_id = Some(since_id.to_string());
-        self
-    }
-    pub fn change_scope(&mut self, change_scope: &str) -> &mut Self {
-        self.change_scope = Some(change_scope.to_string());
-        self
-    }
-    pub fn until_id(&mut self, until_id: &str) -> &mut Self {
-        self.until_id = Some(until_id.to_string());
-        self
-    }
-    pub fn start(&mut self, start: u32) -> &mut Self {
-        self.start = Some(start);
-        self
-    }
-    pub fn limit(&mut self, limit: u32) -> &mut Self {
-        self.limit = Some(limit);
-        self
-    }
-    pub fn with_comments(&mut self, with_comments: bool) -> &mut Self {
-        self.with_comments = Some(with_comments);
-        self
-    }
-}
-
-impl ApiRequest for PullRequestChangesGetBuilder {
+impl ApiRequest for PullRequestChangesGet {
     type Output = PullRequestChanges;
 
     async fn send(&self) -> ApiResponse<Self::Output> {
@@ -117,18 +98,13 @@ impl Api {
         repository_slug: String,
         pull_request_id: String,
     ) -> PullRequestChangesGetBuilder {
-        PullRequestChangesGetBuilder {
-            client: self.client,
-            project_key,
-            pull_request_id,
-            repository_slug,
-            since_id: None,
-            change_scope: None,
-            until_id: None,
-            start: None,
-            limit: None,
-            with_comments: None,
-        }
+        let mut builder = PullRequestChangesGetBuilder::default();
+        builder
+            .client(self.client.clone())
+            .project_key(project_key.to_string())
+            .repository_slug(repository_slug.to_string())
+            .pull_request_id(pull_request_id.to_string());
+        builder
     }
 }
 
@@ -138,45 +114,22 @@ mod tests {
 
     #[test]
     fn it_can_deserialize() {
-        let json = r#"{
-            "fromHash":"from_hash",
-            "toHash":"to_hash",
-            "values":[
-                {"contentId":"12345","type":"ADD","path":{"toString":"path/to/file"}},
-                {"contentId":"67890","type":"COPY","path":{"toString":"another/target"}}
-            ]
-        }"#;
+        let json = mock_json();
+        let pull_request_changes: PullRequestChanges = serde_json::from_str(&json).unwrap();
 
-        let pull_request_changes: PullRequestChanges = serde_json::from_str(json).unwrap();
-
-        assert_eq!(
-            pull_request_changes,
-            PullRequestChanges {
-                from_hash: "from_hash".to_string(),
-                to_hash: "to_hash".to_string(),
-                values: Some(vec![
-                    ChangeItem {
-                        content_id: "12345".to_string(),
-                        change_type: "ADD".to_string(),
-                        path: Path {
-                            to_string: "path/to/file".to_string()
-                        }
-                    },
-                    ChangeItem {
-                        content_id: "67890".to_string(),
-                        change_type: "COPY".to_string(),
-                        path: Path {
-                            to_string: "another/target".to_string()
-                        }
-                    }
-                ])
-            }
-        );
+        assert_eq!(pull_request_changes, mock_struct());
     } // end of it_can_deserialize
 
     #[test]
     fn it_can_serialize() {
-        let pull_request_changes = PullRequestChanges {
+        let pull_request_changes_struct = mock_struct();
+        let json = serde_json::to_string(&pull_request_changes_struct).unwrap();
+
+        assert_eq!(json, mock_json());
+    } // end of it_can_serialize
+
+    fn mock_struct() -> PullRequestChanges {
+        PullRequestChanges {
             from_hash: "from_hash".to_string(),
             to_hash: "to_hash".to_string(),
             values: Some(vec![
@@ -195,12 +148,11 @@ mod tests {
                     },
                 },
             ]),
-        };
+        }
+    }
 
-        let json = serde_json::to_string(&pull_request_changes).unwrap();
-        assert_eq!(
-            json,
-            r#"{"fromHash":"from_hash","toHash":"to_hash","values":[{"contentId":"12345","type":"ADD","path":{"toString":"path/to/file"}},{"contentId":"67890","type":"COPY","path":{"toString":"another/target"}}]}"#
-        );
-    } // end of it_can_serialize
+    fn mock_json() -> String {
+        r#"{"fromHash":"from_hash","toHash":"to_hash","values":[{"contentId":"12345","type":"ADD","path":{"toString":"path/to/file"}},{"contentId":"67890","type":"COPY","path":{"toString":"another/target"}}]}"#.to_string()
+    }
 }
+
