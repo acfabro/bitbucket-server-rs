@@ -228,6 +228,32 @@ let mut client = new("https://bitbucket-server/rest", "API_TOKEN");
 client.with_http_client(http_client);
 ```
 
+## CI/CD
+
+This project uses GitHub Actions for continuous integration and deployment:
+
+- **PR Check**: Runs tests and ensures version is bumped on pull requests
+- **Publish**: Automatically publishes to crates.io when changes are merged to main
+
+### Setting up for Publishing
+
+To enable publishing to crates.io with manual approval, you need to:
+
+1. Generate a new token on [crates.io](https://crates.io/me/tokens)
+2. Go to your GitHub repository settings → Secrets and variables → Actions
+3. Add a new repository secret named `CRATES_IO_TOKEN` with your crates.io API token as the value
+4. Go to Settings → Environments → New environment
+5. Create an environment named `crates-io-publish`
+6. Add required reviewers who must approve the publishing step
+
+With this setup, the workflow will:
+1. Automatically prepare the release when changes are merged to main
+2. Run build and tests to verify everything works
+3. Wait for manual approval from the required reviewers
+4. After approval, publish to crates.io, which triggers docs.rs to build and publish the documentation
+
+You can also manually trigger the publishing workflow from the Actions tab in GitHub.
+
 ## Contributing
 
 Contributions are welcome! Here's how you can contribute:
@@ -239,6 +265,16 @@ Contributions are welcome! Here's how you can contribute:
 5. Submit a pull request
 
 Please make sure to update tests as appropriate and follow the Rust code style guidelines.
+
+### Version Bumping
+
+When making changes, remember to bump the version in `Cargo.toml` according to [Semantic Versioning](https://semver.org/) principles:
+
+- **MAJOR** version for incompatible API changes
+- **MINOR** version for adding functionality in a backwards compatible manner
+- **PATCH** version for backwards compatible bug fixes
+
+The CI workflow will verify that the version has been bumped in pull requests.
 
 ## License
 

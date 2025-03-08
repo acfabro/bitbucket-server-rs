@@ -1,0 +1,112 @@
+# Publish Workflow
+# This workflow prepares and publishes the crate to crates.io with manual approval
+
+name: Publish
+
+on:
+  # Trigger on pushes to main that modify relevant files
+  push:
+    branches: [ main ]
+    paths:
+      - 'Cargo.toml'  # Run when Cargo.toml changes (likely version bumps)
+      - 'src/**'      # Run when source code changes
+  
+  # Allow manual triggering of the workflow
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (leave empty to use version from Cargo.toml)'
+        required: false
+
+jobs:
+  # First job: Prepare and verify the release
+  prepare:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version_check.outputs.version }}
+      should_publish: ${{ steps.version_check.outputs.should_publish }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for version comparison
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable  # Install the stable Rust toolchain
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2  # Cache Rust dependencies for faster builds
+
+      - name: Check if version was bumped
+        id: version_check
+        run: |
+          # Get the current version from Cargo.toml
+          CURRENT_VERSION=$(grep '^version =' Cargo.toml | head -n 1 | cut -d '"' -f 2)
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Use manually specified version if provided
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            CURRENT_VERSION="${{ github.event.inputs.version }}"
+            echo "Using manually specified version: $CURRENT_VERSION"
+          fi
+          
+          # Check if this version already exists on crates.io by querying the API
+          # HTTP 200 means the version exists, 404 means it doesn't
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://crates.io/api/v1/crates/bitbucket-server-rs/$CURRENT_VERSION)
+          
+          if [ "$HTTP_STATUS" == "200" ]; then
+            # Version already exists, skip publishing
+            echo "Version $CURRENT_VERSION already exists on crates.io. Skipping publish."
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+          else
+            # Version doesn't exist, proceed with publishing
+            echo "Version $CURRENT_VERSION is new. Proceeding with publish."
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          fi
+          
+          # Save the version for later steps
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+      # Build and test regardless of whether we'll publish
+      - name: Build
+        run: cargo build --release  # Build in release mode
+
+      - name: Run tests
+        run: cargo test --release  # Run tests in release mode
+
+      - name: Summary
+        run: |
+          echo "Version: ${{ steps.version_check.outputs.version }}"
+          if [ "${{ steps.version_check.outputs.should_publish }}" == "true" ]; then
+            echo "✅ Version is new and ready to publish"
+          else
+            echo "❌ Version already exists on crates.io"
+          fi
+
+  # Second job: Publish with manual approval
+  publish:
+    name: Publish to crates.io
+    needs: prepare
+    # Only run if prepare job determined we should publish
+    if: needs.prepare.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    # Use an environment with required reviewers for manual approval
+    environment:
+      name: crates-io-publish
+      url: https://crates.io/crates/bitbucket-server-rs/${{ needs.prepare.outputs.version }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      # Publish to crates.io after manual approval
+      - name: Publish to crates.io
+        run: |
+          echo "Publishing version ${{ needs.prepare.outputs.version }} to crates.io"
+          cargo publish --token ${CRATES_TOKEN}
+        env:
+          CRATES_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}  # Use the token stored in GitHub secrets
