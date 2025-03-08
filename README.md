@@ -27,7 +27,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bitbucket-server-rs = "0.3.0"
+bitbucket-server-rs = "0.3.1"
 tokio = { version = "1.0", features = ["full"] } # For async runtime
 ```
 
