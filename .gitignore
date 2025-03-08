@@ -1,4 +1,6 @@
 /target
 /.idea
+/temp
 *.iml
-/.ignore
+*.code-workspace
+.DS_Store

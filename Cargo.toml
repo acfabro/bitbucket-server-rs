@@ -6,6 +6,18 @@ edition = "2021"
 license-file = "LICENSE"
 repository = "https://github.com/acfabro/bitbucket-server-rs"
 readme = "README.md"
+documentation = "https://docs.rs/bitbucket-server-rs"
+keywords = ["bitbucket", "api", "client", "rest", "atlassian"]
+categories = ["api-bindings", "web-programming::http-client"]
+
+# docs.rs configuration
+[package.metadata.docs.rs]
+# Document all features
+all-features = true
+# Document all target platforms
+targets = []
+# Set default rustdoc options
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 serde = { version = "1.0.217", features = ["derive"] }

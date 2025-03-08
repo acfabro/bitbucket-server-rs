@@ -14,12 +14,46 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
       - name: Build
         run: cargo build
       - name: Run tests
         run: cargo test
+
+  version-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        
+      - name: Get current version
+        id: current_version
+        run: |
+          CURRENT_VERSION=$(grep '^version =' Cargo.toml | head -n 1 | cut -d '"' -f 2)
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          path: base
+          
+      - name: Get base version
+        id: base_version
+        run: |
+          BASE_VERSION=$(grep '^version =' base/Cargo.toml | head -n 1 | cut -d '"' -f 2)
+          echo "base=$BASE_VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Compare versions
+        run: |
+          echo "Current version: ${{ steps.current_version.outputs.current }}"
+          echo "Base version: ${{ steps.base_version.outputs.base }}"
+          
+          if [ "${{ steps.current_version.outputs.current }}" == "${{ steps.base_version.outputs.base }}" ]; then
+            echo "Error: Version in Cargo.toml has not been bumped"
+            exit 1
+          else
+            echo "Version has been bumped from ${{ steps.base_version.outputs.base }} to ${{ steps.current_version.outputs.current }}"
+          fi
