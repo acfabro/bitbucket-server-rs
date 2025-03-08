@@ -1,48 +1,59 @@
+# PR Check Workflow
+# This workflow runs on pull requests and pushes to main to ensure code quality and version bumping
+
 name: PR Check
 
 on:
+  # Run on pushes to the main branch
   push:
-    branches: [ $default-branch ]
+    branches: [ main ]
+  # Run on pull request events (when opened, edited, or new commits are pushed)
   pull_request:
     types:
-      - opened
-      - edited
-      - synchronize
+      - opened      # When a PR is first created
+      - edited      # When the PR title or description is edited
+      - synchronize # When new commits are pushed to the PR branch
 
 env:
-  CARGO_TERM_COLOR: always
+  CARGO_TERM_COLOR: always  # Enable colorized output for Cargo commands
 
 jobs:
+  # Build and test job - ensures the code compiles and tests pass
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4  # Checkout the repository code
       - name: Build
-        run: cargo build
+        run: cargo build  # Compile the project
       - name: Run tests
-        run: cargo test
+        run: cargo test   # Run all tests
 
+  # Version check job - ensures the version has been bumped in PRs
   version-check:
     runs-on: ubuntu-latest
+    # Only run this job for pull requests, not for pushes to main
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout PR
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4  # Checkout the PR branch
         
       - name: Get current version
         id: current_version
         run: |
+          # Extract the version from Cargo.toml in the PR branch
           CURRENT_VERSION=$(grep '^version =' Cargo.toml | head -n 1 | cut -d '"' -f 2)
           echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           
       - name: Checkout base branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.ref }}
-          path: base
+          ref: ${{ github.event.pull_request.base.ref }}  # Checkout the target branch of the PR
+          path: base  # Put it in a subdirectory called 'base'
           
       - name: Get base version
         id: base_version
         run: |
+          # Extract the version from Cargo.toml in the base branch
           BASE_VERSION=$(grep '^version =' base/Cargo.toml | head -n 1 | cut -d '"' -f 2)
           echo "base=$BASE_VERSION" >> $GITHUB_OUTPUT
           
@@ -51,6 +62,7 @@ jobs:
           echo "Current version: ${{ steps.current_version.outputs.current }}"
           echo "Base version: ${{ steps.base_version.outputs.base }}"
           
+          # Fail the workflow if the version hasn't been bumped
           if [ "${{ steps.current_version.outputs.current }}" == "${{ steps.base_version.outputs.base }}" ]; then
             echo "Error: Version in Cargo.toml has not been bumped"
             exit 1
