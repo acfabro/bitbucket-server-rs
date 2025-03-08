@@ -82,7 +82,8 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let client = new(
+//!     use bitbucket_server_rs::client::ApiRequest;
+//! let client = new(
 //!         "https://bitbucket-server/rest",
 //!         "YOUR_API_TOKEN"
 //!     );
@@ -135,8 +136,8 @@
 //!             "REPOSITORY_SLUG",
 //!             "123" // Pull request ID
 //!         )
-//!         .start(0)
-//!         .limit(100)
+//!         .start(0u32)
+//!         .limit(100u32)
 //!         .build()?
 //!         .send()
 //!         .await?;

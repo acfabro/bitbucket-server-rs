@@ -9,6 +9,7 @@ use log::debug;
 use reqwest::{RequestBuilder, Response, StatusCode};
 use serde::de::DeserializeOwned;
 use std::collections::HashMap;
+use std::fmt::Formatter;
 use std::future::Future;
 
 /// Configuration for the Bitbucket Server API HTTP client.
@@ -338,3 +339,33 @@ pub enum ApiError {
     /// Contains the error message.
     DeserializationError(String),
 }
+
+impl std::fmt::Display for ApiError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ApiError::RequestError => {
+                write!(f, "Error building the request")
+            }
+            ApiError::ResponseError => {
+                write!(f, "Error getting the response")
+            }
+            ApiError::Unauthorized => {
+                write!(f, "Authentication error")
+            }
+            ApiError::HttpClientError(status, message) => {
+                write!(f, "HTTP Client error ({}): {}", status, message)
+            }
+            ApiError::HttpServerError(status, message) => {
+                write!(f, "HTTP Server error ({}): {}", status, message)
+            }
+            ApiError::UnexpectedResponse(status, message) => {
+                write!(f, "Unexpected Response [{}]: {}", status, message)
+            }
+            ApiError::DeserializationError(message) => {
+                write!(f, "Error deserializing: {}", message)
+            }
+        }
+    }
+}
+
+impl std::error::Error for ApiError {}

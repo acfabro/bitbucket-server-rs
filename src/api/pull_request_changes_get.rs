@@ -164,7 +164,7 @@ impl Api {
     ///     let response = client
     ///         .api()
     ///         .pull_request_changes_get("PROJECT", "REPO", "123")
-    ///         .limit(50)
+    ///         .limit(50u32)
     ///         .build()?
     ///         .send()
     ///         .await?;
