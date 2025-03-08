@@ -76,13 +76,12 @@
 //! ### Posting Build Status
 //!
 //! ```no_run
-//! use bitbucket_server_rs::client::new;
+//! use bitbucket_server_rs::client::{new, ApiRequest};
 //! use bitbucket_server_rs::api::build_status::{BuildStatusState, TestResults};
 //! use bitbucket_server_rs::api::build_status_post::BuildStatusPostPayload;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     use bitbucket_server_rs::client::ApiRequest;
 //! let client = new(
 //!         "https://bitbucket-server/rest",
 //!         "YOUR_API_TOKEN"
