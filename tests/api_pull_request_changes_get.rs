@@ -25,9 +25,9 @@ async fn it_can_get_pull_request_changes() {
     let response = client
         .api()
         .pull_request_changes_get(
-            "PROJECT_KEY".to_string(),
-            "REPOSITORY_SLUG".to_string(),
-            "PULL_REQUEST_ID".to_string(),
+            "PROJECT_KEY",
+            "REPOSITORY_SLUG",
+            "PULL_REQUEST_ID",
         )
         .build()
         .unwrap()
@@ -66,9 +66,9 @@ async fn it_can_get_pull_request_changes_with_params() {
     let response = client
         .api()
         .pull_request_changes_get(
-            "PROJECT_KEY".to_string(),
-            "REPOSITORY_SLUG".to_string(),
-            "PULL_REQUEST_ID".to_string(),
+            "PROJECT_KEY",
+            "REPOSITORY_SLUG",
+            "PULL_REQUEST_ID",
         )
         .change_scope("SCOPE")
         .since_id("SINCE_ID")

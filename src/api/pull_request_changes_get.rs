@@ -1,57 +1,97 @@
+//! # Pull Request Changes API
+//!
+//! This module provides functionality to retrieve changes in pull requests from Bitbucket Server.
+//! It allows fetching the list of files that were modified, added, or deleted in a pull request.
+
 use crate::api::Api;
 use crate::client::{ApiRequest, ApiResponse, Client};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// This module is responsible for handling the pull request changes API.
+/// Represents the changes in a pull request.
+///
+/// This struct contains information about the changes between the source and target branches
+/// of a pull request, including the list of modified files.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PullRequestChanges {
-    from_hash: String,
-    to_hash: String,
-    /// Array of changes
+    /// The commit hash of the source branch
+    pub from_hash: String,
+    
+    /// The commit hash of the target branch
+    pub to_hash: String,
+    
+    /// Array of changes (files that were modified, added, or deleted)
     #[serde(rename = "values", skip_serializing_if = "Option::is_none")]
-    values: Option<Vec<ChangeItem>>,
+    pub values: Option<Vec<ChangeItem>>,
 }
 
+/// Represents a single change item in a pull request.
+///
+/// This struct contains information about a single file that was changed in a pull request.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-struct ChangeItem {
+pub struct ChangeItem {
+    /// The content ID of the change
     #[serde(rename = "contentId")]
-    content_id: String,
+    pub content_id: String,
+    
+    /// The type of change (e.g., "ADD", "MODIFY", "DELETE")
     #[serde(rename = "type")]
-    change_type: String,
+    pub change_type: String,
+    
+    /// The path of the file that was changed
     #[serde(rename = "path")]
-    path: Path,
+    pub path: Path,
 }
 
+/// Represents the path of a file in a change.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-struct Path {
+pub struct Path {
+    /// The string representation of the path
     #[serde(rename = "toString")]
-    to_string: String,
+    pub to_string: String,
 }
 
+/// Request builder for retrieving pull request changes.
+///
+/// This struct is used to build and send requests to retrieve changes in a pull request.
 #[derive(Debug, Default, Builder)]
 pub struct PullRequestChangesGet {
+    /// The HTTP client to use for making requests
     client: Client,
+    
+    /// The key of the project containing the repository
     project_key: String,
+    
+    /// The ID of the pull request
     pull_request_id: String,
+    
+    /// The slug of the repository
     repository_slug: String,
+    
     /// The "since" commit hash to stream changes for a RANGE arbitrary change scope
     #[builder(setter(into, strip_option), default)]
     since_id: Option<String>,
-    /// UNREVIEWED to stream the unreviewed changes for the current user (if they exist); RANGE to stream changes between two arbitrary commits (requires 'sinceId' and 'untilId'); otherwise ALL to stream all changes (the default)
+    
+    /// UNREVIEWED to stream the unreviewed changes for the current user (if they exist);
+    /// RANGE to stream changes between two arbitrary commits (requires 'sinceId' and 'untilId');
+    /// otherwise ALL to stream all changes (the default)
     #[builder(setter(into, strip_option), default)]
     change_scope: Option<String>,
+    
     /// The "until" commit hash to stream changes for a RANGE arbitrary change scope
     #[builder(setter(into, strip_option), default)]
     until_id: Option<String>,
+    
     /// Start number for the page (inclusive). If not passed, first page is assumed.
     #[builder(setter(into, strip_option), default)]
     start: Option<u32>,
+    
     /// Number of items to return. If not passed, a page size of 25 is used.
     #[builder(setter(into, strip_option), default)]
     limit: Option<u32>,
+    
     /// If true, the response will include all comments on the changed files
     #[builder(setter(into, strip_option), default)]
     with_comments: Option<bool>,
@@ -60,6 +100,11 @@ pub struct PullRequestChangesGet {
 impl ApiRequest for PullRequestChangesGet {
     type Output = PullRequestChanges;
 
+    /// Sends the request to retrieve pull request changes.
+    ///
+    /// # Returns
+    ///
+    /// A Result containing either the pull request changes or an error.
     async fn send(&self) -> ApiResponse<Self::Output> {
         let request_uri = format!(
             "api/latest/projects/{}/repos/{}/pull-requests/{}/changes",
@@ -92,11 +137,48 @@ impl ApiRequest for PullRequestChangesGet {
 }
 
 impl Api {
+    /// Creates a request builder for retrieving changes in a pull request.
+    ///
+    /// This method returns a builder that can be used to configure and send a request
+    /// to retrieve the changes in a pull request.
+    ///
+    /// # Arguments
+    ///
+    /// * `project_key` - The key of the project containing the repository
+    /// * `repository_slug` - The slug of the repository
+    /// * `pull_request_id` - The ID of the pull request
+    ///
+    /// # Returns
+    ///
+    /// A builder for configuring and sending the request
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use bitbucket_server_rs::client::{new, ApiRequest};
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = new("https://bitbucket-server/rest", "API_TOKEN");
+    ///
+    ///     let response = client
+    ///         .api()
+    ///         .pull_request_changes_get("PROJECT", "REPO", "123")
+    ///         .limit(50u32)
+    ///         .build()?
+    ///         .send()
+    ///         .await?;
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// See the [Bitbucket Data Center REST API documentation](https://developer.atlassian.com/server/bitbucket/rest/v811/api-group-pull-requests/#api-api-latest-projects-projectkey-repos-repositoryslug-pull-requests-pullrequestid-changes-get)
     pub fn pull_request_changes_get(
         self,
-        project_key: String,
-        repository_slug: String,
-        pull_request_id: String,
+        project_key: &str,
+        repository_slug: &str,
+        pull_request_id: &str,
     ) -> PullRequestChangesGetBuilder {
         let mut builder = PullRequestChangesGetBuilder::default();
         builder
@@ -155,4 +237,3 @@ mod tests {
         r#"{"fromHash":"from_hash","toHash":"to_hash","values":[{"contentId":"12345","type":"ADD","path":{"toString":"path/to/file"}},{"contentId":"67890","type":"COPY","path":{"toString":"another/target"}}]}"#.to_string()
     }
 }
-

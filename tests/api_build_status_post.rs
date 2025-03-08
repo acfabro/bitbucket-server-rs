@@ -40,8 +40,8 @@ async fn it_can_post_build_status() {
         .api()
         .build_status_post(
             "PROJECT_KEY",
-            "COMMIT_ID",
             "REPOSITORY_SLUG",
+            "COMMIT_ID",
             &BuildStatusPostPayload {
                 state: BuildStatusState::Successful,
                 key: "KEY".to_string(),
