@@ -256,7 +256,8 @@ You can also manually trigger the publishing workflow from the Actions tab in Gi
 
 ## Contributing
 
-Contributions are welcome! Here's how you can contribute:
+**Note**: At the moment this repo is used for learning purposes, so use it at your own risk. However, I
+do plan to use it in a real project in the near future, so I will be happy to accept contributions if you find it useful.
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature-name`
