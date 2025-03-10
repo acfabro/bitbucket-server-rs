@@ -3,6 +3,9 @@
 
 name: Publish
 
+permissions:
+  contents: write  # Required for creating releases
+
 on:
   # Trigger on pushes to main that modify relevant files
   push:
@@ -10,6 +13,7 @@ on:
     paths:
       - 'Cargo.toml'  # Run when Cargo.toml changes (likely version bumps)
       - 'src/**'      # Run when source code changes
+      - 'tests/**'    # Run when test code changes
   
   # Allow manual triggering of the workflow
   workflow_dispatch:
@@ -41,19 +45,29 @@ jobs:
       - name: Check if version was bumped
         id: version_check
         run: |
-          # Get the current version from Cargo.toml
-          CURRENT_VERSION=$(grep '^version =' Cargo.toml | head -n 1 | cut -d '"' -f 2)
+          # Extract and validate version from Cargo.toml
+          CURRENT_VERSION=$(grep -E '^version = "[0-9]+\.[0-9]+\.[0-9]+"' Cargo.toml | head -n 1 | cut -d '"' -f 2)
+          if [[ ! "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Invalid version format in Cargo.toml"
+            exit 1
+          fi
           echo "Current version: $CURRENT_VERSION"
           
-          # Use manually specified version if provided
+          # Use and validate manually specified version if provided
           if [ -n "${{ github.event.inputs.version }}" ]; then
+            if [[ ! "${{ github.event.inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Error: Invalid manual version format"
+              exit 1
+            fi
             CURRENT_VERSION="${{ github.event.inputs.version }}"
             echo "Using manually specified version: $CURRENT_VERSION"
           fi
           
           # Check if this version already exists on crates.io by querying the API
           # HTTP 200 means the version exists, 404 means it doesn't
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://crates.io/api/v1/crates/bitbucket-server-rs/$CURRENT_VERSION)
+          # Using printf to safely encode version in URL
+          SAFE_VERSION=$(printf %s "$CURRENT_VERSION" | jq -sRr @uri)
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -- "https://crates.io/api/v1/crates/bitbucket-server-rs/$SAFE_VERSION")
           
           if [ "$HTTP_STATUS" == "200" ]; then
             # Version already exists, skip publishing
@@ -94,7 +108,7 @@ jobs:
     # Use an environment with required reviewers for manual approval
     environment:
       name: crates-io-publish
-      url: https://crates.io/crates/bitbucket-server-rs/${{ needs.prepare.outputs.version }}
+      url: ${{ format('https://crates.io/crates/bitbucket-server-rs/{0}', needs.prepare.outputs.version) }}
     
     steps:
       - name: Checkout repository
@@ -110,3 +124,50 @@ jobs:
           cargo publish --token ${CRATES_TOKEN}
         env:
           CRATES_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}  # Use the token stored in GitHub secrets
+
+  # Third job: Create GitHub release
+  create-release:
+    name: Create GitHub Release
+    needs: [prepare, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for release notes
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Get the previous version tag
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -n "$PREV_TAG" ]; then
+            # Generate release notes from git log
+            NOTES=$(git log --no-merges --pretty=format:"* %s" ${PREV_TAG}..HEAD)
+          else
+            # First release - use all commits
+            NOTES=$(git log --no-merges --pretty=format:"* %s")
+          fi
+          
+          # Escape multiline string for GitHub Actions
+          NOTES="${NOTES//'%'/'%25'}"
+          NOTES="${NOTES//$'\n'/'%0A'}"
+          NOTES="${NOTES//$'\r'/'%0D'}"
+          
+          echo "notes=$NOTES" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          tag_name: v${{ needs.prepare.outputs.version }}
+          release_name: Release v${{ needs.prepare.outputs.version }}
+          body: |
+            Version ${{ needs.prepare.outputs.version }} has been published to [crates.io](https://crates.io/crates/bitbucket-server-rs/${{ needs.prepare.outputs.version }})
+            
+            ## Changes
+            ${{ steps.release_notes.outputs.notes }}
+          draft: false
+          prerelease: false

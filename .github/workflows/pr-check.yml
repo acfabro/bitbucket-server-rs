@@ -28,7 +28,7 @@ jobs:
       - name: Run tests
         run: cargo test   # Run all tests
 
-  # Version check job - ensures the version has been bumped in PRs
+  # Version check job - ensures the version has been bumped in PRs when needed
   version-check:
     runs-on: ubuntu-latest
     # Only run this job for pull requests, not for pushes to main
@@ -36,12 +36,55 @@ jobs:
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4  # Checkout the PR branch
-        
+        with:
+          fetch-depth: 0  # Fetch all history for version comparison
+
+      - name: Check changed files
+        id: changed_files
+        run: |
+          # Validate PR base ref to prevent command injection
+          if [[ ! "${{ github.event.pull_request.base.ref }}" =~ ^[a-zA-Z0-9_.-]+$ ]]; then
+            echo "Error: Invalid base ref name"
+            exit 1
+          fi
+
+          # Get list of changed files between PR branch and base
+          # Using -- to prevent treating git output as options
+          CHANGED_FILES=$(git diff --name-only -- "origin/${{ github.event.pull_request.base.ref }}")
+          
+          # List of paths that require version bumps when modified
+          BUMP_PATHS=(
+            "^src/"     # Source code changes
+            "^tests/"   # Test changes
+            "^Cargo.toml$" # Dependency or version changes
+          )
+          
+          # Join paths with OR operator for grep
+          # Using printf to safely handle special characters
+          GREP_PATTERN=$(printf "%s|" "${BUMP_PATHS[@]}" | sed 's/|$//')
+          
+          # Check if any of the listed paths were modified
+          # Using grep -E for extended regex and -F for fixed strings where appropriate
+          if echo "$CHANGED_FILES" | grep -qE -- "$GREP_PATTERN"; then
+            echo "Changes detected in paths requiring version bump:"
+            echo "$CHANGED_FILES" | grep -E -- "$GREP_PATTERN"
+            echo "Version bump required."
+            echo "requires_bump=true" >> $GITHUB_OUTPUT
+          else
+            echo "Only documentation or workflow changes. No version bump required."
+            echo "requires_bump=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Get current version
+        if: steps.changed_files.outputs.requires_bump == 'true'
         id: current_version
         run: |
-          # Extract the version from Cargo.toml in the PR branch
-          CURRENT_VERSION=$(grep '^version =' Cargo.toml | head -n 1 | cut -d '"' -f 2)
+          # Extract and validate version from Cargo.toml in the PR branch
+          CURRENT_VERSION=$(grep -E '^version = "[0-9]+\.[0-9]+\.[0-9]+"' Cargo.toml | head -n 1 | cut -d '"' -f 2)
+          if [[ ! "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Invalid version format in Cargo.toml"
+            exit 1
+          fi
           echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           
       - name: Checkout base branch
@@ -53,19 +96,29 @@ jobs:
       - name: Get base version
         id: base_version
         run: |
-          # Extract the version from Cargo.toml in the base branch
-          BASE_VERSION=$(grep '^version =' base/Cargo.toml | head -n 1 | cut -d '"' -f 2)
+          # Extract and validate version from Cargo.toml in the base branch
+          BASE_VERSION=$(grep -E '^version = "[0-9]+\.[0-9]+\.[0-9]+"' base/Cargo.toml | head -n 1 | cut -d '"' -f 2)
+          if [[ ! "$BASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Invalid version format in base Cargo.toml"
+            exit 1
+          fi
           echo "base=$BASE_VERSION" >> $GITHUB_OUTPUT
           
       - name: Compare versions
+        if: steps.changed_files.outputs.requires_bump == 'true'
         run: |
           echo "Current version: ${{ steps.current_version.outputs.current }}"
           echo "Base version: ${{ steps.base_version.outputs.base }}"
           
           # Fail the workflow if the version hasn't been bumped
           if [ "${{ steps.current_version.outputs.current }}" == "${{ steps.base_version.outputs.base }}" ]; then
-            echo "Error: Version in Cargo.toml has not been bumped"
+            echo "Error: Source code, tests, or Cargo.toml changes detected but version in Cargo.toml has not been bumped"
             exit 1
           else
             echo "Version has been bumped from ${{ steps.base_version.outputs.base }} to ${{ steps.current_version.outputs.current }}"
           fi
+
+      - name: Skip version check
+        if: steps.changed_files.outputs.requires_bump != 'true'
+        run: |
+          echo "No source code or Cargo.toml changes detected. Skipping version check."
