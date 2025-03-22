@@ -179,16 +179,17 @@
 //!
 //! ## Prelude
 //!
-//! For convenience, you can import everything you need from the prelude module:
+//! For convenience, you can import core functionality from the prelude module:
 //!
 //! ```no_run
 //! use bitbucket_server_rs::prelude::*;
+//! use bitbucket_server_rs::api::build_status_get::BuildStatus;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     let client = new("https://bitbucket-server/rest", "API_TOKEN");
 //!
-//!     // Use the client with all the imported types
+//!     // Use the client with explicitly imported API types
 //!     let response = client
 //!         .api()
 //!         .build_status_get("PROJECT", "COMMIT", "REPO")
@@ -211,21 +212,14 @@ pub mod error;
 pub use client::{new, Client, ApiRequest, ApiResponse};
 pub use error::Error;
 
-/// Prelude module that re-exports commonly used types
+/// Prelude module that re-exports core functionality
 ///
-/// This module provides a convenient way to import all commonly used types
+/// This module provides a convenient way to import core types
 /// with a single import statement: `use bitbucket_server_rs::prelude::*;`
+///
+/// Note: Specific API types are not included in the prelude to avoid
+/// potential name collisions. Import those directly from their respective modules.
 pub mod prelude {
     pub use crate::client::{new, Client, ApiRequest, ApiResponse};
     pub use crate::error::Error;
-    
-    // Common API types
-    pub use crate::api::build_status::BuildStatusState;
-    pub use crate::api::build_status::TestResults;
-    pub use crate::api::build_status_get::BuildStatus;
-    pub use crate::api::build_status_post::BuildStatusPostPayload;
-    pub use crate::api::pull_request_changes_get::{PullRequestChanges, ChangeItem, Path};
-    pub use crate::api::pull_request_post::{
-        PullRequestPostPayload, ProjectInfo, RefInfo, RepositoryInfo, Reviewer, User,
-    };
 }
