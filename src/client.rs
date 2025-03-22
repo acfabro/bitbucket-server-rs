@@ -4,12 +4,11 @@
 //! It includes the HTTP client, request/response handling, error types, and utility functions.
 
 use crate::api;
+use crate::Error;
 use api::Api;
-use log::debug;
 use reqwest::{RequestBuilder, Response, StatusCode};
 use serde::de::DeserializeOwned;
 use std::collections::HashMap;
-use std::fmt::Formatter;
 use std::future::Future;
 
 /// Configuration for the Bitbucket Server API HTTP client.
@@ -19,10 +18,10 @@ use std::future::Future;
 pub struct Client {
     /// Base URL for the bitbucket server. It must end with `/rest`.
     pub base_path: String,
-    
+
     /// The HTTP client to use for making requests.
     pub http_client: reqwest::Client,
-    
+
     /// The API token to use for authentication.
     pub api_token: String,
 }
@@ -62,7 +61,8 @@ impl Client {
 /// Basic example of creating a new client and calling an API:
 ///
 /// ```no_run
-/// use bitbucket_server_rs::client::{new, ApiError, ApiRequest, ApiResponse};
+/// use bitbucket_server_rs::Error;
+/// use bitbucket_server_rs::client::{new, ApiRequest, ApiResponse};
 /// use bitbucket_server_rs::api::build_status_get::BuildStatus;
 ///
 /// async fn example() -> ApiResponse<BuildStatus> {
@@ -169,8 +169,7 @@ impl Client {
             .expect("Failed to build request");
 
         let response = self.http_client.execute(req).await.map_err(|e| {
-            debug!("Error sending request: {:?}", e);
-            ApiError::RequestError
+            Error::RequestError(format!("Error sending request: {:?}", e))
         })?;
 
         Self::process_response::<T>(response).await
@@ -203,8 +202,7 @@ impl Client {
             .expect("Failed to build request");
 
         let response = self.http_client.execute(req).await.map_err(|e| {
-            debug!("Error sending request: {:?}", e);
-            ApiError::RequestError
+            Error::RequestError(format!("Error sending request: {:?}", e))
         })?;
 
         Self::process_response::<T>(response).await
@@ -228,31 +226,29 @@ impl Client {
         match response.status() {
             status if status.is_success() => {
                 let json = response.text().await.map_err(|e| {
-                    debug!("Error reading response: {:?}", e);
-                    ApiError::ResponseError
+                    Error::ResponseError(format!("Error reading response: {e:#?}"))
                 })?;
 
                 Self::make_api_response::<T>(json.as_str())
             }
             status if status == StatusCode::UNAUTHORIZED || status == StatusCode::FORBIDDEN => {
-                Err(ApiError::Unauthorized)
+                Err(Error::Unauthorized)
             }
-            status if status.is_client_error() => Err(ApiError::HttpClientError(
+            status if status.is_client_error() => Err(Error::ResponseError(format!(
+                "HTTP Client error [{}]: {}",
                 status.as_u16(),
                 response.text().await.unwrap_or_default(),
-            )),
-            status if status.is_server_error() => Err(ApiError::HttpServerError(
+            ))),
+            status if status.is_server_error() => Err(Error::ResponseError(format!(
+                "HTTP Server error [{}]: {}",
                 status.as_u16(),
                 response.text().await.unwrap_or_default(),
-            )),
-            _ => Err(ApiError::UnexpectedResponse(
-                response.status().as_u16(),
-                format!(
-                    "Unexpected Response [{}]: {}",
-                    response.status(),
-                    response.text().await.unwrap_or_default()
-                ),
-            )),
+            ))),
+            _ => Err(Error::Unexpected(format!(
+                "Unexpected HTTP Response [{}]: {}",
+                response.status(),
+                response.text().await.unwrap_or_default()
+            ))),
         }
     }
 
@@ -276,7 +272,7 @@ impl Client {
 
         // deserialize into the request's output type
         let data = serde_json::from_str::<T::Output>(json)
-            .map_err(|e| ApiError::DeserializationError(e.to_string()))?;
+            .map_err(|e| Error::ResponseError(format!("Error deserializing: {e:#?}")))?;
 
         Ok(Some(data))
     }
@@ -286,7 +282,7 @@ impl Client {
 ///
 /// This is a `Result` type that contains an `Option` of the response data or an `ApiError`.
 /// The `Option` is used because some API responses may be empty (e.g., successful DELETE requests).
-pub type ApiResponse<T> = Result<Option<T>, ApiError>;
+pub type ApiResponse<T> = Result<Option<T>, Error>;
 
 /// Trait for implementing API requests.
 ///
@@ -303,69 +299,3 @@ pub trait ApiRequest {
     /// A Future that resolves to an ApiResponse containing either the response data or an error.
     fn send(&self) -> impl Future<Output = ApiResponse<Self::Output>> + Send;
 }
-
-/// Error types that can occur when making API requests.
-///
-/// This enum represents the different types of errors that can occur when making
-/// API requests to the Bitbucket Server API.
-#[derive(Debug)]
-pub enum ApiError {
-    /// Error building the request.
-    RequestError,
-
-    /// Error getting the response.
-    ResponseError,
-
-    /// Authentication error (HTTP 401 or 403).
-    Unauthorized,
-
-    /// HTTP 4xx client errors.
-    ///
-    /// Contains the status code and response body.
-    HttpClientError(u16, String),
-
-    /// HTTP 5xx server errors.
-    ///
-    /// Contains the status code and response body.
-    HttpServerError(u16, String),
-
-    /// Unexpected response.
-    ///
-    /// Contains the status code and response body.
-    UnexpectedResponse(u16, String),
-
-    /// Error deserializing the response body.
-    ///
-    /// Contains the error message.
-    DeserializationError(String),
-}
-
-impl std::fmt::Display for ApiError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ApiError::RequestError => {
-                write!(f, "Error building the request")
-            }
-            ApiError::ResponseError => {
-                write!(f, "Error getting the response")
-            }
-            ApiError::Unauthorized => {
-                write!(f, "Authentication error")
-            }
-            ApiError::HttpClientError(status, message) => {
-                write!(f, "HTTP Client error ({}): {}", status, message)
-            }
-            ApiError::HttpServerError(status, message) => {
-                write!(f, "HTTP Server error ({}): {}", status, message)
-            }
-            ApiError::UnexpectedResponse(status, message) => {
-                write!(f, "Unexpected Response [{}]: {}", status, message)
-            }
-            ApiError::DeserializationError(message) => {
-                write!(f, "Error deserializing: {}", message)
-            }
-        }
-    }
-}
-
-impl std::error::Error for ApiError {}
