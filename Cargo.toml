@@ -1,9 +1,8 @@
 [package]
 name = "bitbucket-server-rs"
 description = "An API client library for Bitbucket Data Center"
-version = "0.4.1"
+version = "0.5.0"
 edition = "2021"
-license = "MIT"
 license-file = "LICENSE"
 repository = "https://github.com/acfabro/bitbucket-server-rs"
 readme = "README.md"
