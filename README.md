@@ -15,14 +15,6 @@ tools, CI/CD integrations, and Rust applications that need to interact with Bitb
 do plan to use it in a real project in the near future, so I will be happy to accept contributions
 if you find it useful.**
 
-## Features
-
-- **Type-safe API**: Strongly typed interfaces for Bitbucket Server REST API endpoints
-- **Async/Await Support**: Built on tokio and reqwest for modern asynchronous workflows
-- **Error Handling**: Comprehensive error types for better error management
-- **Builder Pattern**: Fluent API design for constructing requests
-- **JSON Serialization/Deserialization**: Automatic handling of JSON payloads
-
 ## Currently Supported APIs
 
 - **Build Status**: Get and post build statuses for commits
@@ -35,16 +27,16 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bitbucket-server-rs = "0.4.1"
+bitbucket-server-rs = "0.5.0"
 tokio = { version = "1.0", features = ["full"] } # For async runtime
 ```
 
-## Usage
+## Usage and Examples
 
 ### Creating a Client
 
 ```no_run
-use bitbucket_server_rs::client::new;
+use bitbucket_server_rs::new;
 
 // Create a new client with base URL and API token
 let client = new(
@@ -53,12 +45,12 @@ let client = new(
 );
 ```
 
-### Getting Build Status
+### Using the Prelude
+
+For convenience, you can import everything you need from the prelude module:
 
 ```rust
-use bitbucket_server_rs::Error;
-use bitbucket_server_rs::client::{new, ApiRequest, ApiResponse};
-use bitbucket_server_rs::api::build_status_get::BuildStatus;
+use bitbucket_server_rs::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -66,39 +58,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "https://bitbucket-server/rest",
         "YOUR_API_TOKEN"
     );
-
-    // Get build status for a specific commit
-    let response = client
-        .api()
-        .build_status_get(
-            "PROJECT_KEY",     // Required: Project key
-            "COMMIT_ID",       // Required: Commit hash
-            "REPOSITORY_SLUG"  // Required: Repository slug
-        )
-        .key("build-123")     // Optional: Filter by build key
-        .build()?
-        .send()
-        .await?;
-
-    // Handle the response
-    match response {
-        Some(build_status) => {
-            println!("Build state: {:?}", build_status.state);
-            println!("Build URL: {}", build_status.url);
-            // Access other fields as needed
-        }
-        None => println!("No build status found")
-    }
-
+    
+    // Now you can use all the imported types without additional imports
+    // ...
+    
     Ok(())
 }
 ```
 
-### Posting Build Status
+### Example: Posting Build Status
 
 ```rust
-use bitbucket_server_rs::client::new;
+use bitbucket_server_rs::{new, ApiRequest};
 use bitbucket_server_rs::api::build_status::BuildStatusState;
+use bitbucket_server_rs::api::build_status_post::BuildStatusPostPayload;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -106,21 +79,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "https://bitbucket-server/rest",
         "YOUR_API_TOKEN"
     );
+
+    // Create build status payload
+    let build_status = BuildStatusPostPayload {
+        key: "build-123".to_string(),
+        state: BuildStatusState::Successful,
+        url: "https://ci.example.com/build/123".to_string(),
+        description: Some("Build passed successfully".to_string()),
+        name: Some("CI Build".to_string()),
+        ..Default::default()
+    };
 
     // Post a build status for a commit
     let response = client
         .api()
         .build_status_post(
             "PROJECT_KEY",     // Required: Project key
+            "REPOSITORY_SLUG", // Required: Repository slug
             "COMMIT_ID",       // Required: Commit hash
-            "REPOSITORY_SLUG"  // Required: Repository slug
+            &build_status
         )
-        .key("build-123")           // Required: Unique identifier for this build status
-        .state(BuildStatusState::Successful)  // Required: Build state (Successful/Failed/InProgress)
-        .url("https://ci.example.com/build/123")  // Required: URL to build details
-        .description("Build passed successfully")  // Optional: Description of the build status
-        .name("CI Build")                         // Optional: Display name for this build
-        .build()?
         .send()
         .await?;
 
@@ -130,10 +108,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### Getting Pull Request Changes
+### Example: Getting Pull Request Changes
 
 ```rust
-use bitbucket_server_rs::client::new;
+use bitbucket_server_rs::{new, ApiRequest};
+use bitbucket_server_rs::api::pull_request_changes_get::{PullRequestChanges, ChangeItem, Path};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -158,9 +137,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Handle the response
     if let Some(changes) = response {
-        println!("Found {} changes", changes.values.len());
-        for change in changes.values {
-            println!("Change: {:?}", change.path);
+        println!("Found {} changes", changes.values.unwrap_or_default().len());
+        for change in changes.values.unwrap_or_default() {
+            println!("Change type: {}, Path: {}", change.change_type, change.path.to_string);
         }
     }
 
@@ -168,10 +147,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### Creating a Pull Request
+### Example: Creating a Pull Request
 
 ```rust
-use bitbucket_server_rs::client::new;
+use bitbucket_server_rs::{new, ApiRequest};
 use bitbucket_server_rs::api::pull_request_post::{
     PullRequestPostPayload, RefInfo, RepositoryInfo, ProjectInfo, Reviewer, User
 };
@@ -227,12 +206,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+### Error Handling
+
+The library provides helper methods for error handling:
+
+```rust
+use bitbucket_server_rs::{Error, new, ApiRequest};
+
+#[tokio::main]
+async fn main() {
+    let client = new("https://bitbucket-server/rest", "API_TOKEN");
+
+    match client.api().build_status_get("PROJECT", "COMMIT", "REPO").build().unwrap().send().await {
+        Ok(response) => {
+            // Handle successful response
+        },
+        Err(e) if e.is_unauthorized() => {
+            eprintln!("Authentication failed. Check your API token.");
+        },
+        Err(e) if e.is_request_error() => {
+            eprintln!("Request error: {}", e);
+        },
+        Err(e) => {
+            eprintln!("Other error: {}", e);
+        }
+    }
+}
+```
+
 ## Custom HTTP Client Configuration
 
 You can customize the HTTP client configuration:
 
 ```no_run
-use bitbucket_server_rs::client::{Client, new};
+use bitbucket_server_rs::{Client, new};
 use reqwest::ClientBuilder;
 
 // Create a custom HTTP client
@@ -257,24 +264,13 @@ This project uses GitHub Actions for continuous integration and deployment:
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Commit your changes: `git commit -am 'Add some feature'`
-4. Push to the branch: `git push origin feature-name`
-5. Submit a pull request
-
-Please make sure to update tests as appropriate and follow the Rust code style guidelines.
+**At the moment this repo is used for learning purposes, so use it at your own risk. However, I
+do plan to use it in a real project in the near future, so I will be happy to accept contributions
+if you find it useful.**
 
 ### Version Bumping
 
-When making changes, remember to bump the version in `Cargo.toml` according
-to [Semantic Versioning](https://semver.org/) principles:
-
-- **MAJOR** version for incompatible API changes
-- **MINOR** version for adding functionality in a backwards compatible manner
-- **PATCH** version for backwards compatible bug fixes
-
-The CI workflow will verify that the version has been bumped in pull requests.
+**Note**: In versions `0.x.y`, every new minor version may introduce breaking changes in the API.
 
 ## License
 

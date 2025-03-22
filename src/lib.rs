@@ -25,7 +25,7 @@
 //! ### Creating a Client
 //!
 //! ```no_run
-//! use bitbucket_server_rs::client::new;
+//! use bitbucket_server_rs::new;
 //!
 //! // Create a new client with base URL and API token
 //! let client = new(
@@ -37,7 +37,7 @@
 //! ### Getting Build Status
 //!
 //! ```no_run
-//! use bitbucket_server_rs::client::{new, ApiRequest};
+//! use bitbucket_server_rs::{new, ApiRequest};
 //! use bitbucket_server_rs::api::build_status_get::BuildStatus;
 //!
 //! #[tokio::main]
@@ -77,7 +77,7 @@
 //! ### Posting Build Status
 //!
 //! ```no_run
-//! use bitbucket_server_rs::client::{new, ApiRequest};
+//! use bitbucket_server_rs::{new, ApiRequest};
 //! use bitbucket_server_rs::api::build_status::{BuildStatusState, TestResults};
 //! use bitbucket_server_rs::api::build_status_post::BuildStatusPostPayload;
 //!
@@ -119,7 +119,7 @@
 //! ### Getting Pull Request Changes
 //!
 //! ```no_run
-//! use bitbucket_server_rs::client::{new, ApiRequest};
+//! use bitbucket_server_rs::{new, ApiRequest};
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -157,8 +157,7 @@
 //! The library provides a comprehensive error type `Error` that covers various failure scenarios:
 //!
 //! ```no_run
-//! use bitbucket_server_rs::Error;
-//! use bitbucket_server_rs::client::{new, ApiRequest};
+//! use bitbucket_server_rs::{Error, new, ApiRequest};
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -177,6 +176,29 @@
 //!     }
 //! }
 //! ```
+//!
+//! ## Prelude
+//!
+//! For convenience, you can import everything you need from the prelude module:
+//!
+//! ```no_run
+//! use bitbucket_server_rs::prelude::*;
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let client = new("https://bitbucket-server/rest", "API_TOKEN");
+//!
+//!     // Use the client with all the imported types
+//!     let response = client
+//!         .api()
+//!         .build_status_get("PROJECT", "COMMIT", "REPO")
+//!         .build()?
+//!         .send()
+//!         .await?;
+//!
+//!     Ok(())
+//! }
+//! ```
 
 /// Bitbucket's `api` API module containing all API endpoint implementations
 pub mod api;
@@ -185,4 +207,25 @@ pub mod api;
 pub mod client;
 pub mod error;
 
+// Re-export key items from client module
+pub use client::{new, Client, ApiRequest, ApiResponse};
 pub use error::Error;
+
+/// Prelude module that re-exports commonly used types
+///
+/// This module provides a convenient way to import all commonly used types
+/// with a single import statement: `use bitbucket_server_rs::prelude::*;`
+pub mod prelude {
+    pub use crate::client::{new, Client, ApiRequest, ApiResponse};
+    pub use crate::error::Error;
+    
+    // Common API types
+    pub use crate::api::build_status::BuildStatusState;
+    pub use crate::api::build_status::TestResults;
+    pub use crate::api::build_status_get::BuildStatus;
+    pub use crate::api::build_status_post::BuildStatusPostPayload;
+    pub use crate::api::pull_request_changes_get::{PullRequestChanges, ChangeItem, Path};
+    pub use crate::api::pull_request_post::{
+        PullRequestPostPayload, ProjectInfo, RefInfo, RepositoryInfo, Reviewer, User,
+    };
+}

@@ -27,7 +27,7 @@
 //! For example:
 //!
 //! ```no_run
-//! use bitbucket_server_rs::client::{new, ApiRequest};
+//! use bitbucket_server_rs::{new, ApiRequest};
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -52,6 +52,10 @@ pub mod build_status_get;
 pub mod build_status_post;
 pub mod pull_request_changes_get;
 pub mod pull_request_post;
+
+// Note: We intentionally avoid re-exporting types from submodules here
+// to prevent potential namespace collisions. Users should import types
+// directly from their specific submodules.
 
 /// Bitbucket's `api` API. i.e. `https://bitbucket-server/rest/api`
 ///

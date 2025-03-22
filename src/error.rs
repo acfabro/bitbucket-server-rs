@@ -22,3 +22,77 @@ pub enum Error {
     #[error("Unexpected error: {0}" )]
     Unexpected(String),
 }
+
+impl Error {
+    /// Check if the error is an authentication error (HTTP 401 or 403).
+    ///
+    /// # Returns
+    ///
+    /// `true` if the error is an authentication error, `false` otherwise.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bitbucket_server_rs::Error;
+    ///
+    /// let error = Error::Unauthorized;
+    /// assert!(error.is_unauthorized());
+    /// ```
+    pub fn is_unauthorized(&self) -> bool {
+        matches!(self, Error::Unauthorized)
+    }
+
+    /// Check if the error is a request error.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the error is a request error, `false` otherwise.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bitbucket_server_rs::Error;
+    ///
+    /// let error = Error::RequestError("Failed to build request".to_string());
+    /// assert!(error.is_request_error());
+    /// ```
+    pub fn is_request_error(&self) -> bool {
+        matches!(self, Error::RequestError(_))
+    }
+
+    /// Check if the error is a response error.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the error is a response error, `false` otherwise.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bitbucket_server_rs::Error;
+    ///
+    /// let error = Error::ResponseError("Failed to parse response".to_string());
+    /// assert!(error.is_response_error());
+    /// ```
+    pub fn is_response_error(&self) -> bool {
+        matches!(self, Error::ResponseError(_))
+    }
+
+    /// Check if the error is an unexpected error.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the error is an unexpected error, `false` otherwise.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bitbucket_server_rs::Error;
+    ///
+    /// let error = Error::Unexpected("Something went wrong".to_string());
+    /// assert!(error.is_unexpected());
+    /// ```
+    pub fn is_unexpected(&self) -> bool {
+        matches!(self, Error::Unexpected(_))
+    }
+}
