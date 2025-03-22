@@ -11,6 +11,7 @@
 //! - `build_status_get`: API for retrieving build status information
 //! - `build_status_post`: API for posting build status updates
 //! - `pull_request_changes_get`: API for retrieving pull request changes
+//! - `pull_request_post`: API for creating pull requests
 //!
 //! ## Usage Pattern
 //!
@@ -50,6 +51,7 @@ pub mod build_status;
 pub mod build_status_get;
 pub mod build_status_post;
 pub mod pull_request_changes_get;
+pub mod pull_request_post;
 
 /// Bitbucket's `api` API. i.e. `https://bitbucket-server/rest/api`
 ///

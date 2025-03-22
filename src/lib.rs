@@ -18,6 +18,7 @@
 //!
 //! - **Build Status**: Get and post build statuses for commits
 //! - **Pull Request Changes**: Retrieve changes in pull requests
+//! - **Pull Request Creation**: Create new pull requests
 //!
 //! ## Usage
 //!
@@ -153,10 +154,11 @@
 //!
 //! ## Error Handling
 //!
-//! The library provides a comprehensive error type `ApiError` that covers various failure scenarios:
+//! The library provides a comprehensive error type `Error` that covers various failure scenarios:
 //!
 //! ```no_run
-//! use bitbucket_server_rs::client::{new, ApiError, ApiRequest};
+//! use bitbucket_server_rs::Error;
+//! use bitbucket_server_rs::client::{new, ApiRequest};
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -166,11 +168,8 @@
 //!         Ok(response) => {
 //!             // Handle successful response
 //!         },
-//!         Err(ApiError::Unauthorized) => {
+//!         Err(Error::Unauthorized) => {
 //!             eprintln!("Authentication failed. Check your API token.");
-//!         },
-//!         Err(ApiError::HttpClientError(status, message)) => {
-//!             eprintln!("Client error ({}): {}", status, message);
 //!         },
 //!         Err(e) => {
 //!             eprintln!("Request failed: {:?}", e);
@@ -184,3 +183,6 @@ pub mod api;
 
 /// REST API Client module providing the core client functionality
 pub mod client;
+pub mod error;
+
+pub use error::Error;
